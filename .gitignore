@@ -1,0 +1,59 @@
+# Built application files
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Generated files
+bin/
+gen/
+out/
+release/
+
+# Gradle files
+.gradle/
+build/
+.kotlin/
+
+# Local configuration (SDK path, secrets)
+local.properties
+
+# Signing keys and secrets
+*.jks
+*.keystore
+keystore.properties
+google-services.json
+
+# Android Studio / IntelliJ
+*.iml
+.idea/
+
+# External native build
+.externalNativeBuild/
+.cxx/
+
+# Logs and captures
+*.log
+captures/
+
+# Lint and test reports
+lint-results*.html
+lint-results*.xml
+lint/intermediates/
+lint/generated/
+lint/outputs/
+lint/tmp/
+
+# Proguard / R8 mapping files (keep if you upload them elsewhere)
+# proguard/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Keep the Gradle wrapper
+!gradle/wrapper/gradle-wrapper.jar
+!gradle-wrapper.jar
+
+# Android Profiling
+*.hprof
