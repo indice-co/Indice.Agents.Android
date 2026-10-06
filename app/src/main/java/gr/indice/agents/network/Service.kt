@@ -2,11 +2,11 @@ package gr.indice.agents.network
 
 
 
-interface Service {
+internal interface Service {
     val sseService: SseService
 }
 
-object ServiceInit {
+internal object ServiceInit {
     fun create(): Service = ServiceImpl()
 }
 

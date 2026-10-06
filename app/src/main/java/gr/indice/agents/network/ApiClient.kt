@@ -17,7 +17,7 @@ object ApiClient {
     private lateinit var OKHTTP_BUILDER_BLOCK : OkHttpClient.Builder.() -> OkHttpClient.Builder
     private lateinit var MOSHI_BUILDER_BLOCK  : Moshi.Builder.() -> Moshi.Builder
 
-    fun initialize(
+    internal fun initialize(
         baseUrl: String,
         retrofitConverterFactories: List<() -> MoshiConverterFactory> = emptyList(),
         okHttpBuilderBlock: OkHttpClient.Builder.() -> OkHttpClient.Builder = { this },
@@ -62,5 +62,5 @@ object ApiClient {
             .addConverterFactory(MoshiConverterFactory.create(moshi))
     }
 
-    val retrofit: Retrofit by lazy { retrofitBuilder.build() }
+    internal val retrofit: Retrofit by lazy { retrofitBuilder.build() }
 }

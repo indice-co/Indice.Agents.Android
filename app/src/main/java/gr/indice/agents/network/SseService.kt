@@ -258,9 +258,11 @@ internal class SseServiceImpl(private val api: SseApi = SseApi.create()): SseSer
     ) {
         guestSession?.let {
             val authorization = "${it.tokenType} ${it.accessToken}"
-            api.likeMessage(authorization =  authorization, chatId = chatId, messageId = messageId, request = LikeRequest(
-                like
-            )
+            api.likeMessage(
+                authorization =  authorization,
+                chatId = chatId,
+                messageId = messageId,
+                request = LikeRequest(like)
             )
         } ?: throw Exception("No user found")
     }
