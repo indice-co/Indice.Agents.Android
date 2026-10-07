@@ -1,0 +1,4 @@
+<resources>
+    <string name="menu_title">My chat history</string>
+    <string name="input_placeholder">Ask anything</string>
+</resources>
