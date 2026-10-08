@@ -5,6 +5,7 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -23,9 +24,6 @@ object AgentUiScreen {
         viewModel: AgentUiViewModel = viewModel()
     ) {
         DexTheme {
-
-            val viewModel = viewModel<AgentUiViewModel>()
-
             val drawerState = rememberDrawerState(DrawerValue.Closed)
             val scope = rememberCoroutineScope()
 
@@ -56,12 +54,14 @@ object AgentUiScreen {
                 val uiState by viewModel.uiState.collectAsStateWithLifecycle()
                 val chatList by viewModel.chatList.collectAsStateWithLifecycle()
                 val questionLimit by viewModel.sessionQuestionsLimit.collectAsStateWithLifecycle()
+                val errorText by viewModel.errorMessage.collectAsStateWithLifecycle()
 
                 ChatScreen.View(
                     chatName = "Dex",
                     chatList = chatList,
                     questionLimit = questionLimit,
                     uiState = uiState,
+                    errorText = errorText,
                     actions = ChatScreen.Actions(
                         openMenu = {
                             scope.launch { drawerState.open() }
@@ -78,6 +78,6 @@ object AgentUiScreen {
 @Preview
 @Composable
 private fun AgentUiScreenPreview() {
-    AgentClient.init("https://agents.indice.gr")
+    val s = remember { AgentClient.init("https://agents.indice.gr"); 0 }
     AgentUiScreen.View()
 }

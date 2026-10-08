@@ -19,6 +19,7 @@ import java.util.UUID
 
 interface SseService {
     val statusText: StateFlow<String>
+    val errorText: StateFlow<String>
     val chatData: StateFlow<List<ChatData>>
 
     val myChatHistory: StateFlow<List<ConversationListItem>>
@@ -43,9 +44,10 @@ internal class SseServiceImpl(
 
 
     private val _statusText = MutableStateFlow("")
-
-
     override val statusText = _statusText.asStateFlow()
+
+    private val _errorText = MutableStateFlow("")
+    override val errorText = _errorText.asStateFlow()
 
     private var conversationId: String? = null
 
@@ -62,6 +64,8 @@ internal class SseServiceImpl(
     private var tempMessageId: String? = null
 
     override suspend fun sendMessage(request: String) {
+
+        _errorText.value = ""
 
         _responses.update {
             it +  ChatData.UserRequest(request)
@@ -125,8 +129,10 @@ internal class SseServiceImpl(
                                         }
                                     }
                                     "error" -> {
-                                        hasTerminated = true
                                         val errorText = it.optString("reason")
+                                        hasTerminated = true
+                                        _statusText.value = ""
+                                        _errorText.value = errorText
                                         throw Exception(errorText)
                                     }
                                     else -> {
@@ -263,6 +269,8 @@ internal class SseServiceImpl(
     }
 
     override fun newInstance() {
+        _statusText.value = ""
+        _errorText.value = ""
         _responses.value = emptyList()
         conversationId = null
     }

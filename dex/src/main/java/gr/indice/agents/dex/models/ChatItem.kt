@@ -11,7 +11,7 @@ sealed interface ChatItem {
     val value: String
     val id: UUID
     data class UserItem(override val value: String, override val id: UUID = UUID.randomUUID()): ChatItem
-    data class AgentItem(override val value: String, val response: DexChatResponse, override val id: UUID = UUID.randomUUID()): ChatItem
+    data class AgentItem(override val value: String, val response: DexChatResponse, val chatContent: List<ChatContent>, override val id: UUID = UUID.randomUUID()): ChatItem
 }
 
 val ChatItem.isUser: Boolean get() = this is ChatItem.UserItem

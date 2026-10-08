@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.ThumbDown
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -58,18 +59,27 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.unit.dp
 import gr.indice.agents.dex.R
+import gr.indice.agents.dex.models.ChatContent
+import gr.indice.agents.dex.models.ChatContentType
 import gr.indice.agents.dex.models.ChatItem
 import gr.indice.agents.dex.models.UiState
 import gr.indice.agents.dex.models.isUser
 import gr.indice.agents.dex.models.shape
+import gr.indice.agents.dex.ui.elements.CalloutView
+import gr.indice.agents.dex.ui.elements.ChatImageView
+import gr.indice.agents.dex.ui.elements.ConfirmationView
+import gr.indice.agents.dex.ui.elements.MultipleChoicesView
+import gr.indice.agents.dex.ui.elements.UnavailableTypeView
 import gr.indice.agents.dex.ui.theme.default
 import gr.indice.agents.dex.ui.theme.small
+import gr.indice.agents.dex.utilities.ChatHtmlView
 import gr.indice.agents.network.models.DexChatUsage
 import kotlinx.coroutines.launch
 
@@ -89,6 +99,7 @@ object ChatScreen {
         chatList: List<ChatItem>,
         questionLimit: DexChatUsage?,
         uiState: UiState,
+        errorText: String,
         actions: Actions
     ) {
         val scope = rememberCoroutineScope()
@@ -134,8 +145,13 @@ object ChatScreen {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
 
-                LaunchedEffect(chatList, uiState.statusText) {
-                    state.animateScrollToItem(state.layoutInfo.totalItemsCount + 1)
+                LaunchedEffect(chatList, uiState.statusText, errorText) {
+                    val lastVisible = state.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+                    val lastIndex = chatList.lastIndex
+
+                    if (lastVisible == null || lastVisible >= lastIndex - 1) {
+                        state.animateScrollToItem(lastIndex.coerceAtLeast(0))
+                    }
                 }
 
                 LazyColumn(
@@ -157,13 +173,26 @@ object ChatScreen {
                                     shape = item.shape,
                                     color = if (item.isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
                                 ) {
-                                    Text(
-                                        modifier = Modifier
-                                            .padding(small)
-                                            .animateContentSize(),
-                                        text = AnnotatedString.fromHtml(item.value),
-                                        color = if (item.isUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    when(item) {
+                                        is ChatItem.UserItem -> {
+                                            Text(
+                                                modifier = Modifier
+                                                    .padding(small)
+                                                    .animateContentSize(),
+                                                text = AnnotatedString.fromHtml(item.value),
+                                                color = Color.White
+                                            )
+                                        }
+                                        is ChatItem.AgentItem -> {
+                                            AgentResponseContent(
+                                                modifier = Modifier
+                                                    .padding(small)
+                                                    .animateContentSize(),
+                                                content = item.chatContent,
+                                                onReply = actions.onSubmit
+                                            )
+                                        }
+                                    }
                                 }
 
                                 //Show like btns when the response is completed
@@ -219,6 +248,8 @@ object ChatScreen {
                     }
 
                     statusView(uiState.statusText)
+                    errorView(errorText)
+
                 }
 
                 InputView(
@@ -232,7 +263,48 @@ object ChatScreen {
         }
     }
 
-     private fun LazyListScope.statusView(value: String) {
+    @Composable
+    private fun AgentResponseContent(
+        modifier: Modifier = Modifier,
+        content: List<ChatContent>,
+        onReply: (String) -> Unit
+    ) {
+        Column(modifier = modifier) {
+            content.forEach { item ->
+                when(item.content) {
+                    is ChatContentType.Text -> {
+                        Text(text = item.content.value)
+                    }
+                    is ChatContentType.Markdown -> {
+                        Text(text = AnnotatedString.fromHtml(item.content.value))
+                    }
+                    is ChatContentType.Html -> {
+                        ChatHtmlView(html = item.content.value)
+                    }
+                    is ChatContentType.ImageData,  is ChatContentType.ImageUrl -> {
+                        ChatImageView(content = item.content, caption = item.caption)
+                    }
+                    is ChatContentType.MultipleChoice -> {
+                        MultipleChoicesView.View(options = item.content.data) { onReply(it) }
+                    }
+                    is ChatContentType.Callout -> {
+                        CalloutView.View(callout = item.content.value)
+                    }
+                    is ChatContentType.Confirmation -> {
+                        ConfirmationView.View(data = item.content.data) { onReply(it) }
+                    }
+                    is ChatContentType.Unsupported -> {
+                        UnavailableTypeView.View(mediaType = item.content.mediaType)
+                    }
+                    is ChatContentType.Unavailable -> {
+                        UnavailableTypeView.View(mediaType = item.content.mediaType)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun LazyListScope.statusView(value: String) {
          value.takeIf { it.isNotBlank() }?.let {
              item {
                 Text(
@@ -248,6 +320,32 @@ object ChatScreen {
              }
          }
 
+    }
+
+    private fun LazyListScope.errorView(value: String) {
+        value.takeIf { it.isNotEmpty() }?.let {
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(color = Color.Red, shape = RoundedCornerShape(default))
+                        .padding(default),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(default)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Error,
+                        contentDescription = "Error",
+                        tint = Color.White
+                    )
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White
+                    )
+                }
+            }
+        }
     }
 
     @Composable
@@ -274,6 +372,8 @@ object ChatScreen {
             BasicTextField(
                 modifier = Modifier.weight(1f),
                 state = input,
+                textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
+                cursorBrush = SolidColor( MaterialTheme.colorScheme.onBackground),
                 interactionSource = interaction,
                 inputTransformation = InputTransformation.maxLength(maxLength),
                 lineLimits = TextFieldLineLimits.MultiLine(maxHeightInLines = totalLineHeight),
@@ -332,7 +432,7 @@ object ChatScreen {
                                     )
 
                                     Text(
-                                        text = "${input.text.count()} / $maxLength",
+                                        text = "${input.text.trim().count()} / $maxLength",
                                         style = MaterialTheme.typography.labelSmall
                                     )
                                 }
@@ -342,7 +442,7 @@ object ChatScreen {
                         }
 
                         val color by animateColorAsState(
-                            if (isConnected)
+                            if (isConnected || input.text.isBlank())
                                 MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
                             else
                                 MaterialTheme.colorScheme.primary
@@ -353,8 +453,8 @@ object ChatScreen {
                                 .clip(CircleShape)
                                 .size(40.dp)
                                 .background(color = color, CircleShape)
-                                .clickable(enabled = !isConnected) {
-                                    onSubmit(input.text.toString())
+                                .clickable(enabled = !isConnected && input.text.isNotEmpty()) {
+                                    onSubmit(input.text.trim().toString())
                                     input.clearText()
                                 },
                             contentAlignment = Alignment.Center

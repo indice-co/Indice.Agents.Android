@@ -45,6 +45,11 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.kotlinx.serialization.json)
 
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
+    implementation(libs.coil.svg)
+    implementation(libs.coil.gif)
+
     api(libs.bundles.retrofit)
     api(libs.okhttp.logging)
     api(libs.bundles.moshi)

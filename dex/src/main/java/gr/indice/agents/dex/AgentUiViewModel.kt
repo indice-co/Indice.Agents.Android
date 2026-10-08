@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import gr.indice.agents.dex.models.ChatItem
 import gr.indice.agents.dex.models.UiState
+import gr.indice.agents.dex.utilities.ChatContentMapper
 import gr.indice.agents.network.AgentClient
 import gr.indice.agents.network.SseService
 import gr.indice.agents.network.models.ChatData
@@ -31,6 +32,7 @@ class AgentUiViewModel(
     private val _sessionQuestionsLimit = MutableStateFlow<DexChatUsage?>(null)
     val sessionQuestionsLimit = _sessionQuestionsLimit.asStateFlow()
     val myChats = service.myChatHistory
+    val errorMessage = service.errorText
 
     val chatList = service.chatData
         .map {
@@ -46,7 +48,9 @@ class AgentUiViewModel(
                         value = chatData.response.messages
                             .flatMap { it.content.parts }
                             .joinToString(" ") { it.value },
-                        response = chatData.response
+                        response = chatData.response,
+                        chatContent = chatData.response.messages
+                            .flatMap { ChatContentMapper.items(it.content) }
                     )
                 }
                 is ChatData.UserRequest -> {
