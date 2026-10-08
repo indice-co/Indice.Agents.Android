@@ -32,7 +32,8 @@ object ConfirmationView {
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(default)
+                horizontalArrangement = Arrangement.spacedBy(default),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedButton(
                     modifier = Modifier.weight(1f),

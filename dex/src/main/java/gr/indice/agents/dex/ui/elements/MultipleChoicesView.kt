@@ -20,7 +20,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import gr.indice.agents.dex.R
-import gr.indice.agents.dex.ui.theme.default
 import gr.indice.agents.dex.ui.theme.small
 
 object MultipleChoicesView {
@@ -35,7 +34,7 @@ object MultipleChoicesView {
 
         Column(
             modifier = modifier,
-            verticalArrangement = Arrangement.spacedBy(default)
+            verticalArrangement = Arrangement.spacedBy(small)
         ) {
             options.forEach { option ->
                 OutlinedButton(

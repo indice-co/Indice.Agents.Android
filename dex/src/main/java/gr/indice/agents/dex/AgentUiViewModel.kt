@@ -36,33 +36,30 @@ class AgentUiViewModel(
 
     val chatList = service.chatData
         .map {
-        it.map { chatData ->
-            when(chatData) {
-                is ChatData.AgentResponse -> {
-
-                    chatData.response.usage?.let { usage ->
-                        _sessionQuestionsLimit.value = usage
+            it.map { chatData ->
+                when(chatData) {
+                    is ChatData.AgentResponse -> {
+                        ChatItem.AgentItem(
+                            value = chatData.response.messages
+                                .flatMap { it.content.parts }
+                                .joinToString(" ") { it.value },
+                            response = chatData.response,
+                            chatContent = chatData.response.messages
+                                .flatMap { ChatContentMapper.items(it.content) }
+                        ).also {
+                            chatData.response.usage?.let { usage ->
+                                _sessionQuestionsLimit.value = usage
+                            }
+                        }
                     }
-
-                    ChatItem.AgentItem(
-                        value = chatData.response.messages
-                            .flatMap { it.content.parts }
-                            .joinToString(" ") { it.value },
-                        response = chatData.response,
-                        chatContent = chatData.response.messages
-                            .flatMap { ChatContentMapper.items(it.content) }
-                    )
+                    is ChatData.UserRequest -> {
+                        ChatItem.UserItem(chatData.question)
+                    }
                 }
-                is ChatData.UserRequest -> {
-                    ChatItem.UserItem(chatData.question)
-                }
+            }.filter {
+                it.value.isNotBlank()
             }
-        }.filter {
-            it.value.isNotBlank()
-        }
-
-    }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), emptyList())
 
     init {
         viewModelScope.launch {

@@ -1,13 +1,14 @@
 package gr.indice.agents.dex.ui.menu
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.Delete
@@ -49,72 +50,78 @@ object DrawerSheet {
         val scope = rememberCoroutineScope()
         ModalDrawerSheet(
             modifier = modifier
+                .fillMaxHeight()
         ) {
             Text(
                 text = title,
                 modifier = Modifier.padding(default),
                 style = MaterialTheme.typography.titleLarge
             )
+
             HorizontalDivider()
 
-            myChats.forEach { item ->
-                val dismissState = rememberSwipeToDismissBoxState(initialValue = SwipeToDismissBoxValue.Settled)
-                SwipeToDismissBox(
-                    state = dismissState,
-                    enableDismissFromStartToEnd = false,
-                    backgroundContent = {
-                        Box(
-                            Modifier
-                                .fillMaxSize()
-                                .background(color = MaterialTheme.colorScheme.errorContainer)
-                            ,
-                            contentAlignment = Alignment.CenterEnd
-                        ) {
-                            IconButton(
-                                onClick = {
-                                    actions.deleteChat(item.id)
-                                }
-                            ) {
-                                Icon(imageVector = Icons.Outlined.Delete, "Delete")
-                            }
-                        }
-
-                    },
-                    onDismiss = {
-                        if (it == SwipeToDismissBoxValue.EndToStart) {
-                            scope.launch {
-                                dismissState.reset()
-                                actions.deleteChat(item.id)
-                            }
-                        } else {
-                            scope.launch { dismissState.reset() }
-                        }
-
-                    }
-                ) {
-                    NavigationDrawerItem(
-                        label = { Text(item.title.orEmpty()) },
-                        selected = false,
-                        onClick = {
-                            actions.fetchChat(item.id)
-                        },
-                        modifier = Modifier
-                            .background(color = MaterialTheme.colorScheme.background)
-                            .padding(NavigationDrawerItemDefaults.ItemPadding)
-                    )
-                }
-            }
-
-            Spacer(Modifier.weight(1f))
-
-            Row(modifier = Modifier
-                .fillMaxWidth()
-                .padding(default)
-                ,
-                horizontalArrangement = Arrangement.End
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
             ) {
+                Column(
+                    modifier = Modifier
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    myChats.forEach { item ->
+                        val dismissState = rememberSwipeToDismissBoxState(initialValue = SwipeToDismissBoxValue.Settled)
+                        SwipeToDismissBox(
+                            state = dismissState,
+                            enableDismissFromStartToEnd = false,
+                            backgroundContent = {
+                                Box(
+                                    Modifier
+                                        .fillMaxSize()
+                                        .background(color = MaterialTheme.colorScheme.errorContainer)
+                                    ,
+                                    contentAlignment = Alignment.CenterEnd
+                                ) {
+                                    IconButton(
+                                        onClick = {
+                                            actions.deleteChat(item.id)
+                                        }
+                                    ) {
+                                        Icon(imageVector = Icons.Outlined.Delete, "Delete")
+                                    }
+                                }
+
+                            },
+                            onDismiss = {
+                                if (it == SwipeToDismissBoxValue.EndToStart) {
+                                    scope.launch {
+                                        dismissState.reset()
+                                        actions.deleteChat(item.id)
+                                    }
+                                } else {
+                                    scope.launch { dismissState.reset() }
+                                }
+
+                            }
+                        ) {
+                            NavigationDrawerItem(
+                                label = { Text(item.title.orEmpty()) },
+                                selected = false,
+                                onClick = {
+                                    actions.fetchChat(item.id)
+                                },
+                                modifier = Modifier
+                                    .background(color = MaterialTheme.colorScheme.background)
+                                    .padding(NavigationDrawerItemDefaults.ItemPadding)
+                            )
+                        }
+                    }
+                }
+
                 FloatingActionButton(
-                    modifier = Modifier,
+                    modifier = Modifier
+                        .padding(default)
+                        .align(Alignment.BottomEnd),
                     onClick = {
                         actions.newChat()
                     },
@@ -126,6 +133,7 @@ object DrawerSheet {
                     )
                 }
             }
+
         }
     }
 }

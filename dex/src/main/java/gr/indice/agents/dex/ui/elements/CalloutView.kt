@@ -32,7 +32,7 @@ object CalloutView {
         val background = if (callout.severity == Severity.Info)
             Color.Gray.copy(alpha = 0.1f)
         else
-            callout.severity.foregroundColor.copy(alpha = 0.8f)
+            callout.severity.foregroundColor.copy(alpha = 0.2f)
 
         Row(
             modifier = modifier

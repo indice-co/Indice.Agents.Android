@@ -3,6 +3,8 @@ package gr.indice.agents.dex.ui.elements
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -50,6 +52,7 @@ object ChatImageView {
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             AsyncImage(
+                modifier = Modifier.width(IntrinsicSize.Max),
                 model = request,
                 imageLoader = imageLoader,
                 contentDescription = caption,

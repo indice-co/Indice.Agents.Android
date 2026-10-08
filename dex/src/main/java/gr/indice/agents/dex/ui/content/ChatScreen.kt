@@ -73,13 +73,13 @@ import gr.indice.agents.dex.models.UiState
 import gr.indice.agents.dex.models.isUser
 import gr.indice.agents.dex.models.shape
 import gr.indice.agents.dex.ui.elements.CalloutView
+import gr.indice.agents.dex.ui.elements.ChatHtmlView
 import gr.indice.agents.dex.ui.elements.ChatImageView
 import gr.indice.agents.dex.ui.elements.ConfirmationView
 import gr.indice.agents.dex.ui.elements.MultipleChoicesView
 import gr.indice.agents.dex.ui.elements.UnavailableTypeView
 import gr.indice.agents.dex.ui.theme.default
 import gr.indice.agents.dex.ui.theme.small
-import gr.indice.agents.dex.utilities.ChatHtmlView
 import gr.indice.agents.network.models.DexChatUsage
 import kotlinx.coroutines.launch
 
@@ -147,7 +147,13 @@ object ChatScreen {
 
                 LaunchedEffect(chatList, uiState.statusText, errorText) {
                     val lastVisible = state.layoutInfo.visibleItemsInfo.lastOrNull()?.index
-                    val lastIndex = chatList.lastIndex
+                    var lastIndex = chatList.lastIndex
+                    uiState.statusText.takeIf { it.isNotEmpty() }?.let {
+                        lastIndex++
+                    }
+                    errorText.takeIf { it.isNotEmpty() }?.let {
+                        lastIndex++
+                    }
 
                     if (lastVisible == null || lastVisible >= lastIndex - 1) {
                         state.animateScrollToItem(lastIndex.coerceAtLeast(0))
@@ -184,6 +190,9 @@ object ChatScreen {
                                             )
                                         }
                                         is ChatItem.AgentItem -> {
+                                            val isLastMessage = remember(item.response) {
+                                                item.response.messages
+                                            }
                                             AgentResponseContent(
                                                 modifier = Modifier
                                                     .padding(small)
@@ -269,7 +278,10 @@ object ChatScreen {
         content: List<ChatContent>,
         onReply: (String) -> Unit
     ) {
-        Column(modifier = modifier) {
+        Column(
+            modifier = modifier,
+            verticalArrangement = Arrangement.spacedBy(default)
+        ) {
             content.forEach { item ->
                 when(item.content) {
                     is ChatContentType.Text -> {
