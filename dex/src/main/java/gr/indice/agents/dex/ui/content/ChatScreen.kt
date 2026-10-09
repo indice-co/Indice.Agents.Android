@@ -73,6 +73,7 @@ import gr.indice.agents.dex.models.shape
 import gr.indice.agents.dex.ui.elements.CalloutView
 import gr.indice.agents.dex.ui.elements.ChatHtmlView
 import gr.indice.agents.dex.ui.elements.ChatImageView
+import gr.indice.agents.dex.ui.elements.CodeSnippet
 import gr.indice.agents.dex.ui.elements.ConfirmationView
 import gr.indice.agents.dex.ui.elements.MultipleChoicesView
 import gr.indice.agents.dex.ui.elements.UnavailableTypeView
@@ -286,7 +287,18 @@ object ChatScreen {
                         Text(text = item.content.value)
                     }
                     is ChatContentType.Markdown -> {
-                        Text(text = AnnotatedString.fromHtml(item.content.value))
+                        item.content.value.forEach { data ->
+                            when(data) {
+                                is ChatContentType.Markdown.Block.Code -> {
+                                    CodeSnippet.View(code = data.code)
+                                }
+                                is ChatContentType.Markdown.Block.Text -> {
+                                    Text(text = AnnotatedString.fromHtml(data.text))
+                                }
+                            }
+
+                        }
+
                     }
                     is ChatContentType.Html -> {
                         ChatHtmlView(html = item.content.value)

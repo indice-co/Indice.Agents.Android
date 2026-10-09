@@ -98,10 +98,24 @@ object ChatContentMapper {
 
     private fun textContent(type: String?, value: String): ChatContentType = when (type) {
         null, "text/plain" -> ChatContentType.Text(value)
-        "text/markdown", "text" -> ChatContentType.Markdown(value)
+        "text/markdown", "text" -> {
+            ChatContentType.Markdown(parseBlocks(value))
+        }
         "text/html" -> ChatContentType.Html(value)
         else -> ChatContentType.Unsupported(type)
     }
+
+    private fun parseBlocks(input: String): List<ChatContentType.Markdown.Block> =
+        input.split("```").mapIndexedNotNull { index, part ->
+            if (index % 2 == 0) {
+                part.trim().takeIf { it.isNotEmpty() }?.let { ChatContentType.Markdown.Block.Text(it) }
+            } else {
+                val code = part.removePrefix("\n")
+                ChatContentType.Markdown.Block.Code(
+                    code = code.trimEnd()
+                )
+            }
+        }
 
     private fun dataUriContent(trimmed: String, type: String?): ChatContentType {
         val uri = DataUri.parse(trimmed) ?: return ChatContentType.Unavailable(type)

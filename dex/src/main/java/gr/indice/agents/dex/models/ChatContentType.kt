@@ -4,7 +4,12 @@ import java.net.URI
 
 sealed interface ChatContentType {
     data class Text(val value: String): ChatContentType
-    data class Markdown(val value: String): ChatContentType
+    data class Markdown(val value: List<Block>): ChatContentType {
+        sealed interface Block {
+            data class Text(val text: String) : Block
+            data class Code(val code: String) : Block
+        }
+    }
     data class Html(val value: String): ChatContentType
     class ImageData(val data: ByteArray, val mediaType: String): ChatContentType {
         override fun equals(other: Any?) =
