@@ -11,9 +11,9 @@ object AgentClient {
         _service ?: ServiceInit.create()
             .also { _service = it }
 
-    internal lateinit var tokenStorage: TokenStorage
+    internal val tokenStorage: TokenStorage = TokenStorage.Ephemeral()
 
-    fun init(baseUrl: String, tokenStorage: TokenStorage = TokenStorage.Ephemeral()) {
+    fun init(baseUrl: String) {
         ApiClient.initialize(
             baseUrl = baseUrl,
             okHttpBuilderBlock = {
@@ -22,8 +22,6 @@ object AgentClient {
                 writeTimeout(60, TimeUnit.SECONDS)
             }
         )
-        AgentClient.tokenStorage = tokenStorage
     }
-
 
 }
