@@ -11,7 +11,7 @@ data class DexChatMessage(
     val content: ChatMessageContent,
     @Serializable(with = OffsetDateTimeSerializer::class)
     val createdAt: OffsetDateTime? = null,
-    val liked: Boolean? = null,
+    var liked: Boolean? = null,
     val messageId: String? = null,
     val role: DexChatRole
 )

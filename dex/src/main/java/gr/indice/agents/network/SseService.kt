@@ -10,7 +10,6 @@ import gr.indice.agents.network.models.DexChatRole
 import gr.indice.agents.network.models.GuestSession
 import gr.indice.agents.network.models.LikeRequest
 import gr.indice.agents.network.models.StreamData
-import gr.indice.agents.network.models.TokenData
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -66,21 +65,6 @@ internal class SseServiceImpl(
 
     override suspend fun sendMessage(request: String) {
 
-        AgentClient.tokenStorage.parse(object : TokenData {
-            override val idToken: String?
-                get() = null
-            override val accessToken: String?
-                get() = "eyJhbGciOiJSUzI1NiIsImtpZCI6IjM4NDNGODY4OEZGNDM1REMxOUQ2MkU3QzQxQjRFMjQ3QURGRjg5QkVSUzI1NiIsIng1dCI6Ik9FUDRhSV8wTmR3WjFpNThRYlRpUjYzX2liNCIsInR5cCI6ImF0K2p3dCJ9.eyJpc3MiOiJodHRwczovL215LmluZGljZS5nciIsIm5iZiI6MTc5MTQ2NTc2MywiaWF0IjoxNzkxNDY1NzYzLCJleHAiOjE3OTE0NjkzNjMsImF1ZCI6ImFnZW50cyIsInNjb3BlIjoiY2hhdCIsImFtciI6WyJ1cm46aW5kaWNlOmd1ZXN0Il0sImNsaWVudF9pZCI6ImRleC1hZ2VudCIsInN1YiI6ImM5ZjdkOTEyLTYyMTQtNDNjNi1iYmM0LWQ4ZGM2MWNhNzAxNiIsImF1dGhfdGltZSI6MTc5MTQ2NTc2MywiaWRwIjoiZ3Vlc3QiLCJpcGFkZHIiOiIxNzIuMjEzLjE5Ni41MSJ9.FVwqIvFSTgkf0-I-m5ivFFJoiRFJR5g-ANxaHU7tSC3B9CRk8AyLMS_am-6TFpBV4180WfLUsezQbWvvPqMGQzmO1qDDbsQrQ55SkM-UV68VfK56EOPsUSSNGmBJayVW4G7tMuxtuoNMASMJL3yyT9--zxc8qDIp9JqAMcpCc861g3l9OpVXilnKg4_ENpr_zbIj8bX_mGqWkKOXaYOuSc6C1KvMczo1SE3QCJRXA-ewQRGfL81k_u2mPA-ZH6JAMaCwD9c5qjAG61EO7GjrQI5tQDhT3sKeZLR7jFgxB8XLqLHEJvb3COL6Uua0xedplgR-PGyhcJR9MUxLkQguAg"
-            override val refreshToken: String?
-                get() = null
-            override val expiresIn: Long?
-                get() = null
-            override val tokenType: String?
-                get() = "Bearer"
-            override val scope: String?
-                get() = null
-        })
-
         _errorText.value = ""
 
         _responses.update {
@@ -94,10 +78,10 @@ internal class SseServiceImpl(
 
         val authorization = AgentClient.tokenStorage.authorization
 
-        val responseApi = conversationId?.takeIf { authorization != null }?.let {
+        val responseApi = conversationId?.let {
 
             api.sendMessage(
-                authorization = authorization!!,
+                authorization = authorization,
                 chatId = it,
                 ChatRequest(text = request)
             )
@@ -278,12 +262,33 @@ internal class SseServiceImpl(
         messageId: String,
         like: Boolean?
     ) {
-        api.likeMessage(
+        val response = api.likeMessage(
             authorization = AgentClient.tokenStorage.authorization,
             chatId = chatId,
             messageId = messageId,
             request = LikeRequest(like)
         )
+
+        if (response.isSuccessful) {
+
+            _responses.update { items ->
+                items.map { item ->
+                    if (item is ChatData.AgentResponse &&
+                        item.response.messages.any { it.messageId == messageId }
+                    ) {
+                        item.copy(
+                            response = item.response.copy(
+                                messages = item.response.messages.map { msg ->
+                                    if (msg.messageId == messageId) msg.copy(liked = like) else msg
+                                }
+                            )
+                        )
+                    } else {
+                        item
+                    }
+                }
+            }
+        }
     }
 
     override fun newInstance() {

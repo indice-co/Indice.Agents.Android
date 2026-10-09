@@ -51,10 +51,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -145,7 +143,7 @@ object ChatScreen {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
 
-                LaunchedEffect(chatList, uiState.statusText, errorText) {
+                LaunchedEffect(chatList.count(), uiState.statusText, errorText) {
                     val lastVisible = state.layoutInfo.visibleItemsInfo.lastOrNull()?.index
                     var lastIndex = chatList.lastIndex
                     uiState.statusText.takeIf { it.isNotEmpty() }?.let {
@@ -207,7 +205,7 @@ object ChatScreen {
                                 //Show like btns when the response is completed
                                 if (item is ChatItem.AgentItem && item.response.messages.lastOrNull()?.messageId != null) {
 
-                                    var isLiked by remember { mutableStateOf(item.response.messages.lastOrNull()?.liked) }
+                                    val isLiked = remember { item.response.messages.lastOrNull()?.liked }
 
                                     Row(
                                         modifier = Modifier,
@@ -221,7 +219,7 @@ object ChatScreen {
 
                                                 if (chatId != null && message != null && message.messageId != null) {
                                                     actions.likeResponse(chatId, message.messageId, liked)
-                                                    isLiked = liked
+                                                    //isLiked = liked
                                                 }
                                             }
                                         ) {
@@ -240,7 +238,7 @@ object ChatScreen {
 
                                                 if (chatId != null && message != null && message.messageId != null) {
                                                     actions.likeResponse(chatId, message.messageId, liked)
-                                                    isLiked = liked
+                                                    //isLiked = liked
                                                 }
                                             }
                                         ) {
