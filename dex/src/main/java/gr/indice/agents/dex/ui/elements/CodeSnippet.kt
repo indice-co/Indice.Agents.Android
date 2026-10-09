@@ -14,7 +14,6 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
@@ -24,8 +23,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.toClipEntry
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.tooling.preview.Preview
-import gr.indice.agents.dex.ui.theme.DexTheme
 import gr.indice.agents.dex.ui.theme.default
 import gr.indice.agents.dex.ui.theme.small
 import kotlinx.coroutines.launch
@@ -72,22 +69,6 @@ object CodeSnippet {
             ) {
                 Icon(Icons.Default.ContentCopy, "Copy")
             }
-        }
-    }
-}
-
-@Preview
-@Composable
-private fun CodeSnippet() {
-    DexTheme {
-        Surface {
-            CodeSnippet.View(
-                code = """
-        fun greet(name: String) {
-            println("Hello, ${'$'}name!")
-        }
-    """.trimIndent()
-            )
         }
     }
 }

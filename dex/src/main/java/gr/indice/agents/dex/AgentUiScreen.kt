@@ -20,57 +20,62 @@ import kotlinx.coroutines.launch
 object AgentUiScreen {
 
     @Composable
-    fun View(
+    fun View() {
+        DexTheme {
+            Content()
+        }
+    }
+
+    @Composable
+    internal fun Content(
         viewModel: AgentUiViewModel = viewModel()
     ) {
-        DexTheme {
-            val drawerState = rememberDrawerState(DrawerValue.Closed)
-            val scope = rememberCoroutineScope()
+        val drawerState = rememberDrawerState(DrawerValue.Closed)
+        val scope = rememberCoroutineScope()
 
-            ModalNavigationDrawer(
-                drawerState = drawerState,
-                drawerContent = {
+        ModalNavigationDrawer(
+            drawerState = drawerState,
+            drawerContent = {
 
-                    val myChats by viewModel.myChats.collectAsStateWithLifecycle()
+                val myChats by viewModel.myChats.collectAsStateWithLifecycle()
 
-                    DrawerSheet.View(
-                        title = stringResource(R.string.menu_title),
-                        myChats = myChats,
-                        actions = DrawerSheet.Actions(
-                            deleteChat = viewModel::deleteChatHistory,
-                            fetchChat = {
-                                viewModel.loadFromHistory(it)
-                                scope.launch { drawerState.close() }
-                            },
-                            newChat = {
-                                viewModel.newChat()
-                                scope.launch { drawerState.close() }
-                            }
-                        )
-                    )
-                }
-            ) {
-
-                val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-                val chatList by viewModel.chatList.collectAsStateWithLifecycle()
-                val questionLimit by viewModel.sessionQuestionsLimit.collectAsStateWithLifecycle()
-                val errorText by viewModel.errorMessage.collectAsStateWithLifecycle()
-
-                ChatScreen.View(
-                    chatName = "Dex",
-                    chatList = chatList,
-                    questionLimit = questionLimit,
-                    uiState = uiState,
-                    errorText = errorText,
-                    actions = ChatScreen.Actions(
-                        openMenu = {
-                            scope.launch { drawerState.open() }
+                DrawerSheet.View(
+                    title = stringResource(R.string.menu_title),
+                    myChats = myChats,
+                    actions = DrawerSheet.Actions(
+                        deleteChat =viewModel::deleteChatHistory,
+                        fetchChat = {
+                            viewModel.loadFromHistory(it)
+                            scope.launch { drawerState.close() }
                         },
-                        onSubmit = viewModel::ask,
-                        likeResponse = viewModel::likeMessage
+                        newChat = {
+                            viewModel.newChat()
+                            scope.launch { drawerState.close() }
+                        }
                     )
                 )
             }
+        ) {
+
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+            val chatList by viewModel.chatList.collectAsStateWithLifecycle()
+            val questionLimit by viewModel.sessionQuestionsLimit.collectAsStateWithLifecycle()
+            val errorText by viewModel.errorMessage.collectAsStateWithLifecycle()
+
+            ChatScreen.View(
+                chatName = "Dex",
+                chatList = chatList,
+                questionLimit = questionLimit,
+                uiState = uiState,
+                errorText = errorText,
+                actions = ChatScreen.Actions(
+                    openMenu = {
+                        scope.launch { drawerState.open() }
+                    },
+                    onSubmit = viewModel::ask,
+                    likeResponse = viewModel::likeMessage
+                )
+            )
         }
     }
 }

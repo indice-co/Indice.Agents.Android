@@ -13,12 +13,18 @@ This project is an Android client for the Indice agent service. It contains two 
 
 1. At your application file call the function `AgentClient.init(BASE_URL)`
 2. `[Optional]` In your HTTP client, add the Authorization header, for logged in request to the agent.
-```
+```kotlin
 Authorization Bearer eyJh.....
 ```
 3. On your Ui component, add the Agent Ui
-```
-AgentUiScreen.View()
+```kotlin
+import gr.indice.agents.dex
+
+@Composable
+fun MyAgent() {
+    AgentUiScreen.View()    
+}
+
 ```
 
 ## License

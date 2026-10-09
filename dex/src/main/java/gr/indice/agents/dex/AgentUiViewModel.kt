@@ -21,7 +21,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 @Immutable
-class AgentUiViewModel(
+internal class AgentUiViewModel(
     private val service: SseService = AgentClient.service.sseService
 ): ViewModel() {
 
@@ -66,6 +66,9 @@ class AgentUiViewModel(
             service.statusText.collect { status ->
                 _uiState.update { it.copy(statusText = status) }
             }
+        }
+        viewModelScope.launch {
+            service.getMyChats()
         }
     }
 

@@ -34,11 +34,7 @@ import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.ThumbDown
-import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.Error
-import androidx.compose.material.icons.outlined.ThumbDown
-import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -75,6 +71,7 @@ import gr.indice.agents.dex.ui.elements.ChatHtmlView
 import gr.indice.agents.dex.ui.elements.ChatImageView
 import gr.indice.agents.dex.ui.elements.CodeSnippet
 import gr.indice.agents.dex.ui.elements.ConfirmationView
+import gr.indice.agents.dex.ui.elements.FooterMessageView
 import gr.indice.agents.dex.ui.elements.MultipleChoicesView
 import gr.indice.agents.dex.ui.elements.UnavailableTypeView
 import gr.indice.agents.dex.ui.theme.default
@@ -203,54 +200,20 @@ object ChatScreen {
                                     }
                                 }
 
-                                //Show like btns when the response is completed
-                                if (item is ChatItem.AgentItem && item.response.messages.lastOrNull()?.messageId != null) {
+                                if (item is ChatItem.AgentItem) {
+                                    FooterMessageView.View(
+                                        citations = item.response.messages.lastOrNull()?.citations.orEmpty(),
+                                        message = item.response.messages.lastOrNull(),
+                                        onLike = { liked ->
+                                            item.response.messages.lastOrNull()?.messageId?.let { messageId ->
+                                                val chatId = item.response.conversationId ?: return@let
 
-                                    val isLiked = remember { item.response.messages.lastOrNull()?.liked }
-
-                                    Row(
-                                        modifier = Modifier,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        IconButton(
-                                            onClick = {
-                                                val message = item.response.messages.lastOrNull()
-                                                val chatId = item.response.conversationId
-                                                val liked = if (isLiked == true) null else true
-
-                                                if (chatId != null && message != null && message.messageId != null) {
-                                                    actions.likeResponse(chatId, message.messageId, liked)
-                                                    //isLiked = liked
-                                                }
+                                                actions.likeResponse(chatId, messageId, liked)
                                             }
-                                        ) {
-                                            val vector = when(isLiked) {
-                                                true -> Icons.Default.ThumbUp
-                                                else -> Icons.Outlined.ThumbUp
-                                            }
-                                            Icon(imageVector = vector, "Like")
                                         }
-
-                                        IconButton(
-                                            onClick = {
-                                                val message = item.response.messages.lastOrNull()
-                                                val chatId = item.response.conversationId
-                                                val liked = if (isLiked == false) null else false
-
-                                                if (chatId != null && message != null && message.messageId != null) {
-                                                    actions.likeResponse(chatId, message.messageId, liked)
-                                                    //isLiked = liked
-                                                }
-                                            }
-                                        ) {
-                                            val vector = when(isLiked) {
-                                                false -> Icons.Default.ThumbDown
-                                                else -> Icons.Outlined.ThumbDown
-                                            }
-                                            Icon(imageVector = vector, "Dislike")
-                                        }
-                                    }
+                                    )
                                 }
+
                             }
                         }
                     }

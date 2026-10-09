@@ -6,6 +6,7 @@ import coil3.ImageLoader
 import coil3.gif.AnimatedImageDecoder
 import coil3.gif.GifDecoder
 import coil3.svg.SvgDecoder
+import coil3.util.DebugLogger
 
 internal object ChatImageLoader {
     @Volatile
@@ -23,5 +24,6 @@ internal object ChatImageLoader {
                 else add(GifDecoder.Factory())
                 add(SvgDecoder.Factory())
             }
+            .logger(DebugLogger())
             .build()
 }
