@@ -42,7 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -50,7 +50,6 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import gr.indice.agents.dex.models.domain
 import gr.indice.agents.dex.models.faviconUrl
-import gr.indice.agents.dex.ui.theme.DexTheme
 import gr.indice.agents.dex.ui.theme.default
 import gr.indice.agents.dex.ui.theme.small
 import gr.indice.agents.dex.utilities.ChatImageLoader
@@ -279,12 +278,12 @@ internal object FooterMessageView {
                 ) {
                     Text(
                         text = "${citation.number}.",
-                        style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.primary)
+                        style = MaterialTheme.typography.labelMedium.copy(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                     )
                     FaviconIcon(citation = citation)
                     Text(
                         modifier = Modifier.weight(1f),
-                        text = "${citation.title}.",
+                        text = "${citation.title}",
                         style = MaterialTheme.typography.labelSmall
                     )
                     Icon(
@@ -295,61 +294,6 @@ internal object FooterMessageView {
                     )
                 }
             }
-        }
-    }
-}
-
-@Preview
-@Composable
-private fun CitationView() {
-    DexTheme { 
-        Surface(Modifier.fillMaxSize()) {
-            FooterMessageView.View(
-                message = null,
-                onLike = {},
-                citations = listOf(
-                Citation(
-                    chunkId = "934ed746-b61e-466f-a93d-fba932a0a16a",
-                    documentId = "00000000-0000-0000-0000-000000000000",
-                    number = 1,
-                    score = 0.0,
-                    sourceUrl = "https://agents.indice.gr/api/sources/Product.md",
-                    title = "⚖️ 5.7 · Debuggability & observability",
-                ),
-                Citation(
-                    chunkId = "bdebde45-848b-47a5-8a65-a6535c36f289",
-                    documentId = "00000000-0000-0000-0000-000000000000",
-                    number = 2,
-                    score = 0.0,
-                    sourceUrl = "https://agents.indice.gr/api/sources/Product.md",
-                    title = "⚖️ 5.7 · Debuggability & observability vDebuggability & observability",
-                ),
-                Citation(
-                    chunkId = "0036b651-bc57-41e0-a60b-6489836a44c2",
-                    documentId = "00000000-0000-0000-0000-000000000000",
-                    number = 3,
-                    score = 0.0,
-                    sourceUrl = "https://agents.indice.gr/api/sources/Product.md",
-                    title = "🚦 2.6 · Identity validation pipeline",
-                ),
-                Citation(
-                    chunkId = "5-4022-8403-19d0205f9f1f",
-                    documentId = "00000000-0000-0000-0000-000000000000",
-                    number = 4,
-                    score = 0.0,
-                    sourceUrl = "https://agents.indice.gr/api/sources/Product.md",
-                    title = "📑 Overview",
-                ),
-                Citation(
-                    chunkId = "7db8a420-e403-4231-8cf3-36ad18786860",
-                    documentId = "00000000-0000-0000-0000-000000000000",
-                    number = 5,
-                    score = 0.0,
-                    sourceUrl = "https://agents.indice.gr/api/sources/Product.md",
-                    title = "🆔 1 · What is Indice IAM",
-                ),
-            )
-            )
         }
     }
 }

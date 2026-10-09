@@ -20,6 +20,7 @@ object ConfirmationView {
     fun View(
         modifier: Modifier = Modifier,
         data: ConfirmData,
+        isActive: Boolean,
         onSubmit: (String) -> Unit
     ) {
         Column(
@@ -37,6 +38,7 @@ object ConfirmationView {
             ) {
                 OutlinedButton(
                     modifier = Modifier.weight(1f),
+                    enabled = isActive,
                     onClick = {
                         onSubmit(data.cancelText)
                     }
@@ -46,6 +48,7 @@ object ConfirmationView {
 
                 Button(
                     modifier = Modifier.weight(1f),
+                    enabled = isActive,
                     onClick = {
                         onSubmit(data.confirmText)
                     }

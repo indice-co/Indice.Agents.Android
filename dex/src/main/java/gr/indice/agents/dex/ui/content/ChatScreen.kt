@@ -46,6 +46,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -156,6 +157,15 @@ object ChatScreen {
                     }
                 }
 
+                val lastAgentMessageId by remember(chatList) {
+                    derivedStateOf {
+                        chatList
+                            .filterIsInstance<ChatItem.AgentItem>()
+                            .flatMap { it.response.messages }
+                            .lastOrNull()?.messageId
+                    }
+                }
+
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -186,14 +196,13 @@ object ChatScreen {
                                             )
                                         }
                                         is ChatItem.AgentItem -> {
-                                            val isLastMessage = remember(item.response) {
-                                                item.response.messages
-                                            }
+                                            val currentMessageId = item.response.messages.lastOrNull()?.messageId
                                             AgentResponseContent(
                                                 modifier = Modifier
                                                     .padding(small)
                                                     .animateContentSize(),
                                                 content = item.chatContent,
+                                                isActive = lastAgentMessageId == currentMessageId,
                                                 onReply = actions.onSubmit
                                             )
                                         }
@@ -238,6 +247,7 @@ object ChatScreen {
     private fun AgentResponseContent(
         modifier: Modifier = Modifier,
         content: List<ChatContent>,
+        isActive: Boolean,
         onReply: (String) -> Unit
     ) {
         Column(
@@ -270,13 +280,13 @@ object ChatScreen {
                         ChatImageView(content = item.content, caption = item.caption)
                     }
                     is ChatContentType.MultipleChoice -> {
-                        MultipleChoicesView.View(options = item.content.data) { onReply(it) }
+                        MultipleChoicesView.View(isActive = isActive, options = item.content.data) { onReply(it) }
                     }
                     is ChatContentType.Callout -> {
                         CalloutView.View(callout = item.content.value)
                     }
                     is ChatContentType.Confirmation -> {
-                        ConfirmationView.View(data = item.content.data) { onReply(it) }
+                        ConfirmationView.View(data = item.content.data, isActive = isActive) { onReply(it) }
                     }
                     is ChatContentType.Unsupported -> {
                         UnavailableTypeView.View(mediaType = item.content.mediaType)
