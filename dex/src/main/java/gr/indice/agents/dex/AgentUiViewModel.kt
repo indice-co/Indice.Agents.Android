@@ -1,6 +1,5 @@
 package gr.indice.agents.dex
 
-import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import gr.indice.agents.dex.models.ChatItem
@@ -20,7 +19,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-@Immutable
 internal class AgentUiViewModel(
     private val service: SseService = AgentClient.service.sseService
 ): ViewModel() {
@@ -64,7 +62,7 @@ internal class AgentUiViewModel(
     init {
         viewModelScope.launch {
             service.statusText.collect { status ->
-                _uiState.update { it.copy(statusText = status) }
+                _uiState.update { it.copy(statusText = status, isLoading = false) }
             }
         }
         viewModelScope.launch {
@@ -85,6 +83,7 @@ internal class AgentUiViewModel(
     }
 
     fun loadFromHistory(id: String) {
+        stop()
         viewModelScope.launch(Dispatchers.IO) {
             service.getChatById(id)
         }
@@ -93,20 +92,24 @@ internal class AgentUiViewModel(
     fun newChat() {
         service.newInstance()
         _sessionQuestionsLimit.value = null
+        _uiState.update {
+            it.copy(statusText = "", isLoading = false)
+        }
     }
 
     fun ask(question: String) {
         if (job?.isActive == true) return
-        _uiState.value = UiState(isConnected = true)
 
         job = viewModelScope.launch(Dispatchers.IO) {
+            _uiState.update { it.copy(isConnected = true, isLoading = true) }
             service.sendMessage(question)
-            _uiState.update { it.copy(isConnected = false) }
+            _uiState.update { it.copy(isConnected = false, isLoading = false) }
         }
     }
 
     fun stop() {
         job?.cancel()
-        _uiState.update { it.copy(isConnected = false) }
+        job = null
+        _uiState.update { it.copy(isConnected = false, isLoading = false, statusText = "") }
     }
 }

@@ -41,7 +41,7 @@ internal object ApiClient {
                 addInterceptor(HttpLoggingInterceptor().apply {
                     level = HttpLoggingInterceptor.Level.BODY
                 })
-                if (BuildConfig.DEBUG) {
+                if (BuildConfig.DEBUG && false) {
                     addInterceptor(Interceptor {
                         it.request()
                             .newBuilder()

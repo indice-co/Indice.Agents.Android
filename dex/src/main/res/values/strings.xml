@@ -3,4 +3,5 @@
     <string name="input_placeholder">Ask anything</string>
     <string name="button_continue">Continue</string>
     <string name="unavailable_media_type">Unavailable media type</string>
+    <string name="loading_agent">Thinking</string>
 </resources>

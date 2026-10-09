@@ -1,6 +1,5 @@
 package gr.indice.agents.dex.ui.content
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -34,6 +33,7 @@ import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Square
 import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -48,8 +48,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -78,14 +80,17 @@ import gr.indice.agents.dex.ui.elements.UnavailableTypeView
 import gr.indice.agents.dex.ui.theme.default
 import gr.indice.agents.dex.ui.theme.small
 import gr.indice.agents.network.models.DexChatUsage
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 object ChatScreen {
 
     data class Actions(
         val openMenu: () -> Unit,
         val onSubmit: (String) -> Unit,
-        val likeResponse: (chatId: String, messageId: String, Boolean?) -> Unit
+        val likeResponse: (chatId: String, messageId: String, Boolean?) -> Unit,
+        val stopStream: () -> Unit
     )
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -227,7 +232,7 @@ object ChatScreen {
                         }
                     }
 
-                    statusView(uiState.statusText)
+                    statusView(uiState.isLoading, uiState.statusText)
                     errorView(errorText)
 
                 }
@@ -236,7 +241,8 @@ object ChatScreen {
                     isConnected = uiState.isConnected,
                     placeholderText = stringResource(R.string.input_placeholder),
                     questionLimit = questionLimit,
-                    onSubmit = actions.onSubmit
+                    onSubmit = actions.onSubmit,
+                    stopStream = actions.stopStream
                 )
 
             }
@@ -299,21 +305,50 @@ object ChatScreen {
         }
     }
 
-    private fun LazyListScope.statusView(value: String) {
-         value.takeIf { it.isNotBlank() }?.let {
-             item {
+    private fun LazyListScope.statusView(isLoading: Boolean, status: String) {
+        if (isLoading || status.isNotEmpty()) {
+            item {
+
+                var dotCount by remember { mutableIntStateOf(1) }
+
+                LaunchedEffect(isLoading, status) {
+                    if (isLoading && status.isEmpty()) {
+                        while (true) {
+                            delay(400.milliseconds)
+                            dotCount = if (dotCount == 3) 1 else dotCount + 1
+                        }
+                    }
+                }
+
+                val text = if (!isLoading || status.isNotEmpty()) status else stringResource(R.string.loading_agent) + ".".repeat(dotCount)
                 Text(
                     modifier = Modifier
                         .clip(RoundedCornerShape(default))
-                        .background(Color.Yellow, RoundedCornerShape(default))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f), RoundedCornerShape(default))
                         .padding(small)
+                        .animateContentSize()
                     ,
-                    text = value,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onBackground
+                    text = text,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
                 )
-             }
-         }
+            }
+
+        }
+//         value.takeIf { it.isNotBlank() }?.let {
+//             item {
+//                Text(
+//                    modifier = Modifier
+//                        .clip(RoundedCornerShape(default))
+//                        .background(Color.Yellow, RoundedCornerShape(default))
+//                        .padding(small)
+//                    ,
+//                    text = value,
+//                    style = MaterialTheme.typography.bodySmall,
+//                    color = MaterialTheme.colorScheme.onBackground
+//                )
+//             }
+//         }
 
     }
 
@@ -351,7 +386,8 @@ object ChatScreen {
         questionLimit: DexChatUsage?,
         maxLength: Int = 2000,
         totalLineHeight: Int = 10,
-        onSubmit: (String) -> Unit
+        onSubmit: (String) -> Unit,
+        stopStream: () -> Unit
     ) {
         val input = rememberTextFieldState()
 
@@ -436,27 +472,32 @@ object ChatScreen {
 
                         }
 
-                        val color by animateColorAsState(
-                            if (isConnected || input.text.isBlank())
-                                MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-                            else
-                                MaterialTheme.colorScheme.primary
-                        )
+//                        val color by animateColorAsState(
+//                            if (isConnected || input.text.isBlank())
+//                                MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+//                            else
+//                                MaterialTheme.colorScheme.primary
+//                        )
 
                         Box(
                             modifier = Modifier
                                 .clip(CircleShape)
                                 .size(40.dp)
-                                .background(color = color, CircleShape)
-                                .clickable(enabled = !isConnected && input.text.isNotEmpty()) {
-                                    onSubmit(input.text.trim().toString())
-                                    input.clearText()
+                                .background(color = MaterialTheme.colorScheme.primary, CircleShape)
+                                .clickable(enabled = (!isConnected && input.text.isNotEmpty()) || isConnected) {
+                                    if (isConnected) {
+                                        stopStream()
+                                    } else {
+                                        onSubmit(input.text.trim().toString())
+                                        input.clearText()
+                                    }
                                 },
                             contentAlignment = Alignment.Center
                         ) {
+                            val icon = if (isConnected) Icons.Default.Square else Icons.Default.ArrowUpward
                             Icon(
                                 modifier = Modifier.size(20.dp),
-                                imageVector = Icons.Default.ArrowUpward,
+                                imageVector = icon,
                                 contentDescription = "",
                                 tint = Color.White
                             )

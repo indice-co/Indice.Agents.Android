@@ -10,10 +10,13 @@ import gr.indice.agents.network.models.DexChatRole
 import gr.indice.agents.network.models.GuestSession
 import gr.indice.agents.network.models.LikeRequest
 import gr.indice.agents.network.models.StreamData
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.util.UUID
 
@@ -64,146 +67,162 @@ internal class SseServiceImpl(
     private var tempMessageId: String? = null
 
     override suspend fun sendMessage(request: String) {
-
-        _errorText.value = ""
-
-        _responses.update {
-            it +  ChatData.UserRequest(request)
-        }
-
-        hasTerminated = false
-        isCompleted = false
-
-        val patchApplier = PatchApplier()
-
-        val authorization = AgentClient.tokenStorage.authorization
-
-        val responseApi = conversationId?.let {
-
-            api.sendMessage(
-                authorization = authorization,
-                chatId = it,
-                ChatRequest(text = request)
-            )
-
-        } ?: api.newStream(authorization = authorization, ChatRequest(text = request))
-
-        val body = responseApi.body() ?: return
+        withContext(Dispatchers.IO) {
+            _errorText.value = ""
 
 
 
-        body.source().use { source ->
-            if (hasTerminated) { throw Exception("Received a frame after a terminal event.") }
+            _responses.update {
+                it + ChatData.UserRequest(request)
+            }
 
-            var id    : String? = null
-            var event : String? = null
-            var retry : String? = null
-            var data  : String? = null
+            hasTerminated = false
+            isCompleted = false
 
-            var chatGuestSession: GuestSession? = null
+            val patchApplier = PatchApplier()
 
-            while (!source.exhausted()) {
-                val line = source.readUtf8Line() ?: break
-                when {
-                    line.startsWith("id:")      -> id    = line.removePrefix("id:").trim()
-                    line.startsWith("event:")   -> event = line.removePrefix("event:").trim()
-                    line.startsWith("retry:")   -> retry = line.removePrefix("retry:").trim()
-                    line.startsWith("data:")    -> data  = line.removePrefix("data:").trim()
-                    line.isEmpty() -> {
-                        if (data != null) {
-                            try {
-                                val it = JSONObject(data)
-                                when(val type = it.optString("type")) {
-                                    "start" -> {
-                                        tempMessageId = UUID.randomUUID().toString()
-                                        val obj = patchApplier.parseStartData(data)
-                                        if (conversationId == null || conversationId != obj.conversationId) {
-                                            conversationId = obj.conversationId
+            val authorization = AgentClient.tokenStorage.authorization
 
-                                            val guestSession = obj.guestSession
-                                            if (guestSession != null){
-                                                chatGuestSession = guestSession
-                                                AgentClient.tokenStorage.parse(guestSession)
+            val responseApi = conversationId?.let {
+
+                api.sendMessage(
+                    authorization = authorization,
+                    chatId = it,
+                    ChatRequest(text = request)
+                )
+
+            } ?: api.newStream(authorization = authorization, ChatRequest(text = request))
+
+            val body = responseApi.body() ?: return@withContext
+
+            body.source().use { source ->
+                if (hasTerminated) {
+                    throw Exception("Received a frame after a terminal event.")
+                }
+
+                var id: String? = null
+                var event: String? = null
+                var retry: String? = null
+                var data: String? = null
+
+                var chatGuestSession: GuestSession? = null
+
+                while (!source.exhausted()) {
+                    ensureActive()
+                    val line = source.readUtf8Line() ?: break
+                    when {
+                        line.startsWith("id:") -> id = line.removePrefix("id:").trim()
+                        line.startsWith("event:") -> event = line.removePrefix("event:").trim()
+                        line.startsWith("retry:") -> retry = line.removePrefix("retry:").trim()
+                        line.startsWith("data:") -> data = line.removePrefix("data:").trim()
+                        line.isEmpty() -> {
+                            if (data != null) {
+                                try {
+                                    val it = JSONObject(data)
+                                    when (val type = it.optString("type")) {
+                                        "start" -> {
+                                            tempMessageId = UUID.randomUUID().toString()
+                                            val obj = patchApplier.parseStartData(data)
+                                            if (conversationId == null || conversationId != obj.conversationId) {
+                                                conversationId = obj.conversationId
+
+                                                val guestSession = obj.guestSession
+                                                if (guestSession != null) {
+                                                    chatGuestSession = guestSession
+                                                    AgentClient.tokenStorage.parse(guestSession)
+                                                }
+                                                _streamState.value = conversationId?.let { uuid ->
+                                                    StreamData.Started(uuid)
+                                                }
                                             }
-                                            _streamState.value = conversationId?.let { uuid -> StreamData.Started(uuid) }
                                         }
-                                    }
-                                    "error" -> {
-                                        val errorText = it.optString("reason")
-                                        hasTerminated = true
-                                        _statusText.value = ""
-                                        _errorText.value = errorText
-                                        throw Exception(errorText)
-                                    }
-                                    else -> {
-                                        if (conversationId == null)
-                                            throw Exception("Received a frame before start.")
-                                        when(type) {
-                                            "status" -> {
-                                                val value = it.optString("value")
-                                                _statusText.value = value
-                                                _streamState.value = StreamData.Status(value)
-                                            }
-                                            "delta"  -> {
-                                                _statusText.value = ""
-                                                _streamState.value = StreamData.Changed
-                                                patchApplier.apply(patchApplier.parsePatch(data))
 
-                                                val snapshot = patchApplier.result()
-                                                snapshot.id = tempMessageId
+                                        "error" -> {
+                                            val errorText = it.optString("reason")
+                                            hasTerminated = true
+                                            _statusText.value = ""
+                                            _errorText.value = errorText
+                                            throw Exception(errorText)
+                                        }
 
-                                                _responses.update {
-                                                    it.toMutableList().apply {
-                                                        removeAll { it is ChatData.AgentResponse && it.response.id == tempMessageId  }
+                                        else -> {
+                                            if (conversationId == null)
+                                                throw Exception("Received a frame before start.")
+                                            when (type) {
+                                                "status" -> {
+                                                    val value = it.optString("value")
+                                                    _statusText.value = value
+                                                    _streamState.value = StreamData.Status(value)
+                                                }
+
+                                                "delta" -> {
+                                                    _statusText.value = ""
+                                                    _streamState.value = StreamData.Changed
+                                                    patchApplier.apply(patchApplier.parsePatch(data))
+
+                                                    val snapshot = patchApplier.result()
+                                                    snapshot.id = tempMessageId
+
+                                                    _responses.update {
+                                                        it.toMutableList().apply {
+                                                            removeAll { it is ChatData.AgentResponse && it.response.id == tempMessageId }
+                                                        }
+                                                    }
+                                                    _responses.update {
+                                                        it + ChatData.AgentResponse(
+                                                            snapshot
+                                                        )
                                                     }
                                                 }
-                                                _responses.update { it + ChatData.AgentResponse(snapshot) }
-                                            }
 
-                                            "done"  -> {
-                                                val response = patchApplier.result()
+                                                "done" -> {
+                                                    val response = patchApplier.result()
 
-                                                response.id = tempMessageId
-                                                response.conversationId = conversationId
-                                                response.guestSession = chatGuestSession
-                                                response.text = response.messages
-                                                    .flatMap { it.content.parts }
-                                                    .joinToString("") { it.value }
-                                                _streamState.value = StreamData.Completed(response)
+                                                    response.id = tempMessageId
+                                                    response.conversationId = conversationId
+                                                    response.guestSession = chatGuestSession
+                                                    response.text = response.messages
+                                                        .flatMap { it.content.parts }
+                                                        .joinToString("") { it.value }
+                                                    _streamState.value =
+                                                        StreamData.Completed(response)
 
-                                                _responses.update {
-                                                    it.toMutableList().apply { removeAll { it is ChatData.AgentResponse && it.response.id == tempMessageId  } }
+                                                    _responses.update {
+                                                        it.toMutableList()
+                                                            .apply { removeAll { it is ChatData.AgentResponse && it.response.id == tempMessageId } }
+                                                    }
+
+                                                    _responses.update {
+                                                        it + ChatData.AgentResponse(response)
+                                                    }
+
+                                                    hasTerminated = true
+                                                    isCompleted = true
                                                 }
 
-                                                _responses.update {
-                                                    it + ChatData.AgentResponse(response)
+                                                else -> {
+                                                    _streamState.value = StreamData.Ignored
                                                 }
-
-                                                hasTerminated = true
-                                                isCompleted = true
-                                            }
-                                            else -> {
-                                                _streamState.value = StreamData.Ignored
                                             }
                                         }
                                     }
+                                } catch (e: Exception) {
+                                    println(e.stackTraceToString())
                                 }
-                            } catch (e: Exception) {
-                                println(e.stackTraceToString())
                             }
-                        }
 
-                        id = null
-                        event = null
-                        retry = null
-                        data = null
+                            id = null
+                            event = null
+                            retry = null
+                            data = null
+                        }
                     }
                 }
+                chatGuestSession = null
             }
-            chatGuestSession = null
-        }
 
-        getMyChats()
+            getMyChats()
+        }
     }
 
     override suspend fun getMyChats(

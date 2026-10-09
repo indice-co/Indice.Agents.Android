@@ -73,7 +73,8 @@ object AgentUiScreen {
                         scope.launch { drawerState.open() }
                     },
                     onSubmit = viewModel::ask,
-                    likeResponse = viewModel::likeMessage
+                    likeResponse = viewModel::likeMessage,
+                    stopStream = viewModel::stop
                 )
             )
         }
