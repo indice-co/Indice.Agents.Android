@@ -4,4 +4,5 @@
     <string name="button_continue">Continue</string>
     <string name="unavailable_media_type">Unavailable media type</string>
     <string name="loading_agent">Thinking</string>
+    <string name="dex_info_message">Dex is AI and can make mistakes.</string>
 </resources>
