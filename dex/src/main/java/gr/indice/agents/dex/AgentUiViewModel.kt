@@ -6,6 +6,7 @@ import gr.indice.agents.dex.models.ChatItem
 import gr.indice.agents.dex.models.UiState
 import gr.indice.agents.dex.utilities.ChatContentMapper
 import gr.indice.agents.network.AgentClient
+import gr.indice.agents.network.models.AgentInfo
 import gr.indice.agents.network.models.ChatData
 import gr.indice.agents.network.models.DexChatUsage
 import gr.indice.agents.network.services.AgentsService
@@ -15,6 +16,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -31,8 +33,12 @@ internal class AgentUiViewModel(
 
     private val _sessionQuestionsLimit = MutableStateFlow<DexChatUsage?>(null)
     val sessionQuestionsLimit = _sessionQuestionsLimit.asStateFlow()
-    val myChats = sseService.myChatHistory
-    val errorMessage = sseService.errorText
+    val myChats get() = sseService.myChatHistory
+    val errorMessage get () = sseService.errorText
+
+    val agents get() = agentsService.agents
+
+    private var selectedAgent: AgentInfo? = null
 
     val chatList = sseService.chatData
         .map {
@@ -71,6 +77,12 @@ internal class AgentUiViewModel(
             agentsService.getAgents()
             sseService.getMyChats()
         }
+
+        viewModelScope.launch {
+            agents.collectLatest {
+                selectedAgent = it.firstOrNull()
+            }
+        }
     }
 
     fun likeMessage(chatId: String, messageId: String, like: Boolean?) {
@@ -100,12 +112,16 @@ internal class AgentUiViewModel(
         }
     }
 
+    fun selectedAgent(agent: AgentInfo) {
+        selectedAgent = agent
+    }
+
     fun ask(question: String) {
         if (job?.isActive == true) return
 
         job = viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isConnected = true, isLoading = true) }
-            sseService.sendMessage(question)
+            sseService.sendMessage(question, selectedAgent)
             _uiState.update { it.copy(isConnected = false, isLoading = false) }
         }
     }

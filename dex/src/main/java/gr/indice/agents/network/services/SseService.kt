@@ -3,6 +3,7 @@ package gr.indice.agents.network.services
 import gr.indice.agents.network.AgentClient
 import gr.indice.agents.network.adapters.PatchApplier
 import gr.indice.agents.network.api.SseApi
+import gr.indice.agents.network.models.AgentInfo
 import gr.indice.agents.network.models.ChatData
 import gr.indice.agents.network.models.ChatRequest
 import gr.indice.agents.network.models.ConversationListItem
@@ -28,7 +29,7 @@ interface SseService {
 
     val myChatHistory: StateFlow<List<ConversationListItem>>
 
-    suspend fun sendMessage(request: String)
+    suspend fun sendMessage(request: String, agentInfo: AgentInfo?)
 
     suspend fun getMyChats(page: Int? = null, size: Int? = null, sort: Int? = null, search: String? = null)
 
@@ -67,11 +68,9 @@ internal class SseServiceImpl(
 
     private var tempMessageId: String? = null
 
-    override suspend fun sendMessage(request: String) {
+    override suspend fun sendMessage(request: String, agentInfo: AgentInfo?) {
         withContext(Dispatchers.IO) {
             _errorText.value = ""
-
-
 
             _responses.update {
                 it + ChatData.UserRequest(request)
@@ -89,10 +88,10 @@ internal class SseServiceImpl(
                 api.sendMessage(
                     authorization = authorization,
                     chatId = it,
-                    ChatRequest(text = request)
+                    ChatRequest(text = request, agentName = agentInfo?.name)
                 )
 
-            } ?: api.newStream(authorization = authorization, ChatRequest(text = request))
+            } ?: api.newStream(authorization = authorization, ChatRequest(text = request, agentName = agentInfo?.name))
 
             val body = responseApi.body() ?: return@withContext
 

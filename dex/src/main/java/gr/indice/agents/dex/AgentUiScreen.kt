@@ -61,6 +61,7 @@ object AgentUiScreen {
             val chatList by viewModel.chatList.collectAsStateWithLifecycle()
             val questionLimit by viewModel.sessionQuestionsLimit.collectAsStateWithLifecycle()
             val errorText by viewModel.errorMessage.collectAsStateWithLifecycle()
+            val agents by viewModel.agents.collectAsStateWithLifecycle()
 
             ChatScreen.View(
                 chatName = "Dex",
@@ -68,13 +69,15 @@ object AgentUiScreen {
                 questionLimit = questionLimit,
                 uiState = uiState,
                 errorText = errorText,
+                agents = agents,
                 actions = ChatScreen.Actions(
                     openMenu = {
                         scope.launch { drawerState.open() }
                     },
                     onSubmit = viewModel::ask,
                     likeResponse = viewModel::likeMessage,
-                    stopStream = viewModel::stop
+                    stopStream = viewModel::stop,
+                    onAgentSelection = viewModel::selectedAgent
                 )
             )
         }
@@ -84,6 +87,6 @@ object AgentUiScreen {
 @Preview
 @Composable
 private fun AgentUiScreenPreview() {
-    val s = remember { AgentClient.init("https://agents.indice.gr"); 0 }
+    remember { AgentClient.init("https://agents.indice.gr"); 0 }
     AgentUiScreen.View()
 }

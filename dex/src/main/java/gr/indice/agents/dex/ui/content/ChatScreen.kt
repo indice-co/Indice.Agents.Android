@@ -79,6 +79,7 @@ import gr.indice.agents.dex.ui.elements.MultipleChoicesView
 import gr.indice.agents.dex.ui.elements.UnavailableTypeView
 import gr.indice.agents.dex.ui.theme.default
 import gr.indice.agents.dex.ui.theme.small
+import gr.indice.agents.network.models.AgentInfo
 import gr.indice.agents.network.models.DexChatUsage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -90,7 +91,8 @@ object ChatScreen {
         val openMenu: () -> Unit,
         val onSubmit: (String) -> Unit,
         val likeResponse: (chatId: String, messageId: String, Boolean?) -> Unit,
-        val stopStream: () -> Unit
+        val stopStream: () -> Unit,
+        val onAgentSelection: (AgentInfo) -> Unit
     )
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -102,6 +104,7 @@ object ChatScreen {
         questionLimit: DexChatUsage?,
         uiState: UiState,
         errorText: String,
+        agents: List<AgentInfo>,
         actions: Actions
     ) {
         val scope = rememberCoroutineScope()
@@ -241,8 +244,10 @@ object ChatScreen {
                     isConnected = uiState.isConnected,
                     placeholderText = stringResource(R.string.input_placeholder),
                     questionLimit = questionLimit,
+                    agents = agents,
                     onSubmit = actions.onSubmit,
-                    stopStream = actions.stopStream
+                    stopStream = actions.stopStream,
+                    onAgentSelection = actions.onAgentSelection
                 )
 
             }
@@ -335,20 +340,6 @@ object ChatScreen {
             }
 
         }
-//         value.takeIf { it.isNotBlank() }?.let {
-//             item {
-//                Text(
-//                    modifier = Modifier
-//                        .clip(RoundedCornerShape(default))
-//                        .background(Color.Yellow, RoundedCornerShape(default))
-//                        .padding(small)
-//                    ,
-//                    text = value,
-//                    style = MaterialTheme.typography.bodySmall,
-//                    color = MaterialTheme.colorScheme.onBackground
-//                )
-//             }
-//         }
 
     }
 
@@ -386,8 +377,10 @@ object ChatScreen {
         questionLimit: DexChatUsage?,
         maxLength: Int = 2000,
         totalLineHeight: Int = 10,
+        agents: List<AgentInfo>,
         onSubmit: (String) -> Unit,
-        stopStream: () -> Unit
+        stopStream: () -> Unit,
+        onAgentSelection: (AgentInfo) -> Unit
     ) {
         val input = rememberTextFieldState()
 
@@ -457,6 +450,12 @@ object ChatScreen {
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
+
+                                    DropdownSelection.View(
+                                        options = agents,
+                                        onSelection = onAgentSelection
+                                    )
+
                                     Text(
                                         text = text.orEmpty(),
                                         style = MaterialTheme.typography.labelSmall
@@ -472,12 +471,6 @@ object ChatScreen {
 
                         }
 
-//                        val color by animateColorAsState(
-//                            if (isConnected || input.text.isBlank())
-//                                MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-//                            else
-//                                MaterialTheme.colorScheme.primary
-//                        )
 
                         Box(
                             modifier = Modifier
