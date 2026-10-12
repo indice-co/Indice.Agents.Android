@@ -126,6 +126,12 @@ internal class AgentUiViewModel(
             }
         }
 
+        createPager()
+    }
+
+    private fun createPager() {
+        _conversationPager.value = null
+
         _conversationPager.value = Pager(
             hasLocalFilter = false
         ) { page, size ->
@@ -145,6 +151,7 @@ internal class AgentUiViewModel(
     fun deleteChatHistory(id: String) {
         viewModelScope.launch(Dispatchers.IO) {
             sseService.deleteChat(id)
+            createPager()
         }
     }
 
@@ -174,6 +181,7 @@ internal class AgentUiViewModel(
             _uiState.update { it.copy(isConnected = true, isLoading = true) }
             sseService.sendMessage(question, selectedAgent)
             _uiState.update { it.copy(isConnected = false, isLoading = false) }
+            createPager()
         }
     }
 

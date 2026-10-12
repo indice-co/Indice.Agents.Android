@@ -12,17 +12,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
@@ -43,6 +47,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import gr.indice.agents.dex.R
@@ -107,6 +113,7 @@ object DrawerSheet {
                     .padding(top = default)
                 ,
                 state = search,
+                lineLimits = TextFieldLineLimits.SingleLine,
                 shape = CircleShape,
                 leadingIcon = {
                     Icon(
@@ -155,6 +162,54 @@ object DrawerSheet {
 
                                 val item = myChats[index]!!
                                 val dismissState = rememberSwipeToDismissBoxState(initialValue = SwipeToDismissBoxValue.Settled)
+
+                                var showAlert by remember { mutableStateOf(false) }
+
+                                if (showAlert) {
+                                    AlertDialog(
+                                        modifier = Modifier,
+                                        onDismissRequest = {},
+                                        confirmButton = {
+                                            Button(
+                                                onClick = {
+                                                    showAlert = false
+                                                    actions.deleteChat(item.id)
+                                                }
+                                            ) {
+                                                Text(stringResource(R.string.alert_delete_btn_delete))
+                                            }
+                                        },
+                                        dismissButton = {
+                                            OutlinedButton(
+                                                onClick = {
+                                                    showAlert = false
+                                                },
+                                                border = null
+                                            ) {
+                                                Text(stringResource(R.string.alert_delete_btn_cancel))
+                                            }
+                                        },
+                                        icon = {
+                                           Icon(imageVector = Icons.Outlined.Delete, "Delete")
+                                        },
+                                        title = {
+                                            Text(stringResource(R.string.alert_delete_title))
+                                        },
+                                        text = {
+                                            Text(stringResource(R.string.alert_delete_text)
+                                                .replace("{NAME}", item.title.orEmpty()))
+                                        },
+                                        shape= RoundedCornerShape(default),
+                                        tonalElevation =  0.dp,
+                                        iconContentColor = MaterialTheme.colorScheme.primary,
+                                        properties = DialogProperties(
+                                            dismissOnBackPress = false,
+                                            dismissOnClickOutside = false,
+                                            usePlatformDefaultWidth = true
+                                        )
+                                    )
+                                }
+
                                 SwipeToDismissBox(
                                     state = dismissState,
                                     modifier = Modifier.clip(RoundedCornerShape(default)),
@@ -169,7 +224,8 @@ object DrawerSheet {
                                         ) {
                                             IconButton(
                                                 onClick = {
-                                                    actions.deleteChat(item.id)
+                                                    showAlert = true
+                                                    //actions.deleteChat(item.id)
                                                 }
                                             ) {
                                                 Icon(imageVector = Icons.Outlined.Delete, "Delete")
@@ -181,7 +237,8 @@ object DrawerSheet {
                                         if (it == SwipeToDismissBoxValue.EndToStart) {
                                             scope.launch {
                                                 dismissState.reset()
-                                                actions.deleteChat(item.id)
+                                                showAlert = true
+                                                //actions.deleteChat(item.id)
                                             }
                                         } else {
                                             scope.launch { dismissState.reset() }
