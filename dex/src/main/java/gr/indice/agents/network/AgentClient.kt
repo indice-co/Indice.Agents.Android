@@ -1,6 +1,8 @@
 package gr.indice.agents.network
 
 import gr.indice.agents.network.models.TokenStorage
+import gr.indice.agents.network.services.Service
+import gr.indice.agents.network.services.ServiceInit
 import java.util.concurrent.TimeUnit
 
 

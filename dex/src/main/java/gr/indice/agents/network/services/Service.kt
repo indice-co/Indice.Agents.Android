@@ -1,9 +1,9 @@
-package gr.indice.agents.network
-
+package gr.indice.agents.network.services
 
 
 internal interface Service {
     val sseService: SseService
+    val agentsService: AgentsService
 }
 
 internal object ServiceInit {
@@ -12,6 +12,7 @@ internal object ServiceInit {
 
 internal class ServiceImpl: Service {
     override val sseService = SseServiceImpl()
+    override val agentsService = AgentsServiceImpl()
 
 }
 

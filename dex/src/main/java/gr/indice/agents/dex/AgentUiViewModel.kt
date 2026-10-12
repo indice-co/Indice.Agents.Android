@@ -6,9 +6,10 @@ import gr.indice.agents.dex.models.ChatItem
 import gr.indice.agents.dex.models.UiState
 import gr.indice.agents.dex.utilities.ChatContentMapper
 import gr.indice.agents.network.AgentClient
-import gr.indice.agents.network.SseService
 import gr.indice.agents.network.models.ChatData
 import gr.indice.agents.network.models.DexChatUsage
+import gr.indice.agents.network.services.AgentsService
+import gr.indice.agents.network.services.SseService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,7 +21,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 internal class AgentUiViewModel(
-    private val service: SseService = AgentClient.service.sseService
+    private val sseService: SseService = AgentClient.service.sseService,
+    private val agentsService: AgentsService = AgentClient.service.agentsService,
 ): ViewModel() {
 
     private var job: Job? = null
@@ -29,10 +31,10 @@ internal class AgentUiViewModel(
 
     private val _sessionQuestionsLimit = MutableStateFlow<DexChatUsage?>(null)
     val sessionQuestionsLimit = _sessionQuestionsLimit.asStateFlow()
-    val myChats = service.myChatHistory
-    val errorMessage = service.errorText
+    val myChats = sseService.myChatHistory
+    val errorMessage = sseService.errorText
 
-    val chatList = service.chatData
+    val chatList = sseService.chatData
         .map {
             it.map { chatData ->
                 when(chatData) {
@@ -61,36 +63,37 @@ internal class AgentUiViewModel(
 
     init {
         viewModelScope.launch {
-            service.statusText.collect { status ->
+            sseService.statusText.collect { status ->
                 _uiState.update { it.copy(statusText = status, isLoading = false) }
             }
         }
         viewModelScope.launch {
-            service.getMyChats()
+            agentsService.getAgents()
+            sseService.getMyChats()
         }
     }
 
     fun likeMessage(chatId: String, messageId: String, like: Boolean?) {
         viewModelScope.launch(Dispatchers.IO) {
-            service.likeMessage(chatId, messageId, like)
+            sseService.likeMessage(chatId, messageId, like)
         }
     }
 
     fun deleteChatHistory(id: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            service.deleteChat(id)
+            sseService.deleteChat(id)
         }
     }
 
     fun loadFromHistory(id: String) {
         stop()
         viewModelScope.launch(Dispatchers.IO) {
-            service.getChatById(id)
+            sseService.getChatById(id)
         }
     }
 
     fun newChat() {
-        service.newInstance()
+        sseService.newInstance()
         _sessionQuestionsLimit.value = null
         _uiState.update {
             it.copy(statusText = "", isLoading = false)
@@ -102,7 +105,7 @@ internal class AgentUiViewModel(
 
         job = viewModelScope.launch(Dispatchers.IO) {
             _uiState.update { it.copy(isConnected = true, isLoading = true) }
-            service.sendMessage(question)
+            sseService.sendMessage(question)
             _uiState.update { it.copy(isConnected = false, isLoading = false) }
         }
     }

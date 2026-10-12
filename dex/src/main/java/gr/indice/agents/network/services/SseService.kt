@@ -1,5 +1,6 @@
-package gr.indice.agents.network
+package gr.indice.agents.network.services
 
+import gr.indice.agents.network.AgentClient
 import gr.indice.agents.network.adapters.PatchApplier
 import gr.indice.agents.network.api.SseApi
 import gr.indice.agents.network.models.ChatData
