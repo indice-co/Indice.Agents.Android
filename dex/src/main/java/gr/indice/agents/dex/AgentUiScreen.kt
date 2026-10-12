@@ -11,6 +11,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.paging.compose.collectAsLazyPagingItems
 import gr.indice.agents.dex.ui.content.ChatScreen
 import gr.indice.agents.dex.ui.menu.DrawerSheet
 import gr.indice.agents.dex.ui.theme.DexTheme
@@ -37,11 +38,12 @@ object AgentUiScreen {
             drawerState = drawerState,
             drawerContent = {
 
-                val myChats by viewModel.myChats.collectAsStateWithLifecycle()
+                val myChats = viewModel.conversationPagerFlow.collectAsLazyPagingItems()
 
                 DrawerSheet.View(
                     title = stringResource(R.string.menu_title),
                     myChats = myChats,
+                    search = viewModel.searchText,
                     actions = DrawerSheet.Actions(
                         deleteChat =viewModel::deleteChatHistory,
                         fetchChat = {

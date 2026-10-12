@@ -50,6 +50,10 @@ dependencies {
     implementation(libs.coil.svg)
     implementation(libs.coil.gif)
 
+    // Paging
+    implementation(libs.androidx.paging.runtime.ktx)
+    implementation(libs.androidx.paging.compose)
+
     api(libs.bundles.retrofit)
     api(libs.okhttp.logging)
     api(libs.bundles.moshi)

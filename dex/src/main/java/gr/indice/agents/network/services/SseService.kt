@@ -1,5 +1,7 @@
 package gr.indice.agents.network.services
 
+import gr.indice.agents.dex.models.ResultSet
+import gr.indice.agents.dex.models.toBase
 import gr.indice.agents.network.AgentClient
 import gr.indice.agents.network.adapters.PatchApplier
 import gr.indice.agents.network.api.SseApi
@@ -31,7 +33,7 @@ interface SseService {
 
     suspend fun sendMessage(request: String, agentInfo: AgentInfo?)
 
-    suspend fun getMyChats(page: Int? = null, size: Int? = null, sort: Int? = null, search: String? = null)
+    suspend fun getMyChats(page: Int? = null, size: Int? = null, sort: Int? = null, search: String? = null): ResultSet<ConversationListItem>
 
     suspend fun getChatById(chatId: String)
 
@@ -230,10 +232,18 @@ internal class SseServiceImpl(
         size: Int?,
         sort: Int?,
         search: String?
-    ) {
-        api.getMyChats(AgentClient.tokenStorage.authorization, page, size, sort, search).body()?.also {
-            _myChatHistory.value = it.items
-        }
+    ): ResultSet<ConversationListItem> {
+        val result = api.getMyChats(AgentClient.tokenStorage.authorization, page, size, sort, search)
+            .takeIf { it.isSuccessful }
+            ?.body()
+            ?.toBase()
+            ?.also {
+                _myChatHistory.value = it.items.orEmpty()
+            }
+
+        if (result == null) throw Exception("Fetch data failed")
+
+        return result
     }
 
     override suspend fun getChatById(chatId: String) {

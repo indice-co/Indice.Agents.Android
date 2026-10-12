@@ -1,22 +1,33 @@
 package gr.indice.agents.dex
 
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.cachedIn
+import androidx.paging.filter
 import gr.indice.agents.dex.models.ChatItem
 import gr.indice.agents.dex.models.UiState
 import gr.indice.agents.dex.utilities.ChatContentMapper
+import gr.indice.agents.dex.utilities.Pager
 import gr.indice.agents.network.AgentClient
 import gr.indice.agents.network.models.AgentInfo
 import gr.indice.agents.network.models.ChatData
+import gr.indice.agents.network.models.ConversationListItem
 import gr.indice.agents.network.models.DexChatUsage
 import gr.indice.agents.network.services.AgentsService
 import gr.indice.agents.network.services.SseService
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -33,13 +44,45 @@ internal class AgentUiViewModel(
 
     private val _sessionQuestionsLimit = MutableStateFlow<DexChatUsage?>(null)
     val sessionQuestionsLimit = _sessionQuestionsLimit.asStateFlow()
-    val myChats get() = sseService.myChatHistory
     val errorMessage get () = sseService.errorText
 
     val agents get() = agentsService.agents
 
     private var selectedAgent: AgentInfo? = null
 
+    val searchText = TextFieldState()
+
+    private val _conversationPager = MutableStateFlow<Pager<ConversationListItem>?>(null)
+    val conversationPager = _conversationPager.asStateFlow()
+
+
+    private val filterProvider: Flow<((ConversationListItem) -> Boolean)?> =
+        combine(snapshotFlow { searchText.text }, _conversationPager ) { search, pager ->
+            if (search.isNotEmpty()) {
+                pager?.hasLocalFilter = true
+                { conversationListItem ->
+                    conversationListItem.title?.contains(search.toString(), ignoreCase = true) == true
+                }
+            } else {
+                if (pager?.hasLocalFilter == true) {
+                    pager.hasLocalFilter = false
+                }
+                null as ((ConversationListItem) -> Boolean)?
+            }
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val conversationPagerFlow = conversationPager
+        .filterNotNull()
+        .flatMapLatest { it.getPagerFlow() }
+        .cachedIn(viewModelScope)
+        .combine(filterProvider) { page, filter ->
+            if (filter == null) {
+                page
+            } else {
+                page.filter(filter)
+            }
+        }
     val chatList = sseService.chatData
         .map {
             it.map { chatData ->
@@ -75,13 +118,21 @@ internal class AgentUiViewModel(
         }
         viewModelScope.launch {
             agentsService.getAgents()
-            sseService.getMyChats()
         }
 
         viewModelScope.launch {
             agents.collectLatest {
                 selectedAgent = it.firstOrNull()
             }
+        }
+
+        _conversationPager.value = Pager(
+            hasLocalFilter = false
+        ) { page, size ->
+            sseService.getMyChats(
+                page = page,
+                size = size
+            )
         }
     }
 
