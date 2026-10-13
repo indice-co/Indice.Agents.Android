@@ -14,7 +14,7 @@ import java.lang.reflect.Type
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 
-class OffsetDateTimeAdapter {
+internal class OffsetDateTimeAdapter {
     @ToJson
     fun toJson(value: OffsetDateTime): String {
         return DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(value)
@@ -28,7 +28,7 @@ class OffsetDateTimeAdapter {
 }
 
 
-class OffsetDateTimeDeserializer : JsonDeserializer<OffsetDateTime> {
+internal class OffsetDateTimeDeserializer : JsonDeserializer<OffsetDateTime> {
     override fun deserialize(
         json: JsonElement?,
         typeOfT: Type?,
@@ -41,7 +41,7 @@ class OffsetDateTimeDeserializer : JsonDeserializer<OffsetDateTime> {
 
 
 
-object OffsetDateTimeSerializer : KSerializer<OffsetDateTime> {
+internal object OffsetDateTimeSerializer : KSerializer<OffsetDateTime> {
     override val descriptor: SerialDescriptor =
         PrimitiveSerialDescriptor("OffsetDateTime", PrimitiveKind.STRING)
 

@@ -9,6 +9,7 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import retrofit2.converter.scalars.ScalarsConverterFactory
+import java.util.concurrent.TimeUnit
 
 internal object ApiClient {
 
@@ -36,11 +37,17 @@ internal object ApiClient {
             true -> OkHttpClientBuilderHelper.getUnsafeOkHttpClient()
             else -> OkHttpClientBuilderHelper.getOkHttpBuilder()
         }.let(OKHTTP_BUILDER_BLOCK)
-            .apply { if (BuildConfig.DEBUG) {
-                addInterceptor(HttpLoggingInterceptor().apply {
-                    level = HttpLoggingInterceptor.Level.BODY
-                })
-            } }
+            .apply {
+                connectTimeout(60, TimeUnit.SECONDS)
+                readTimeout(0, TimeUnit.MINUTES)
+                writeTimeout(60, TimeUnit.SECONDS)
+
+                if (BuildConfig.DEBUG) {
+                    addInterceptor(HttpLoggingInterceptor().apply {
+                        level = HttpLoggingInterceptor.Level.BODY
+                    })
+                }
+            }
     }
 
     private val retrofitBuilder: Retrofit.Builder by lazy {

@@ -4,7 +4,7 @@ import gr.indice.agents.network.Serializer
 import gr.indice.agents.network.models.ProblemDetails
 import okhttp3.ResponseBody
 
-object DecodingHelpers {
+internal object DecodingHelpers {
 
     fun ResponseBody.toProblemDetails() = runCatching {
         toType(ProblemDetails::class.java)

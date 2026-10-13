@@ -6,7 +6,7 @@ import gr.indice.agents.network.adapters.OffsetDateTimeAdapter
 import gr.indice.agents.network.adapters.UUIDAdapter
 
 
-object Serializer {
+internal object Serializer {
 
     @JvmStatic
     val moshiBuilder: Moshi.Builder = Moshi.Builder()
