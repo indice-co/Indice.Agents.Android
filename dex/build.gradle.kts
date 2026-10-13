@@ -2,13 +2,33 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    id("maven-publish")
 }
 
 android {
     namespace = "gr.indice.agents.dex"
 
-    group = "gr.indice.agents.dex"
+    group = "gr.indice.agents"
     version = "1.0.0"
+
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+        }
+    }
+
+    afterEvaluate {
+        publishing {
+            publications {
+                register<MavenPublication>("release") {
+                    from(components["release"])
+                    groupId = project.group.toString()
+                    artifactId = "dex"
+                    version = project.version.toString()
+                }
+            }
+        }
+    }
 
     compileSdk {
         version = release(37)
@@ -28,6 +48,14 @@ android {
         buildConfig = true
         compose = true
     }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            consumerProguardFiles("proguard-rules.pro")
+        }
+    }
+
 }
 
 dependencies {
@@ -58,7 +86,7 @@ dependencies {
     implementation(libs.androidx.paging.runtime.ktx)
     implementation(libs.androidx.paging.compose)
 
-    api(libs.bundles.retrofit)
-    api(libs.okhttp.logging)
-    api(libs.bundles.moshi)
+    implementation(libs.bundles.retrofit)
+    implementation(libs.okhttp.logging)
+    implementation(libs.bundles.moshi)
 }
