@@ -1,0 +1,13 @@
+<resources>
+    <string name="menu_title">My chat history</string>
+    <string name="input_placeholder">Ask anything</string>
+    <string name="button_continue">Continue</string>
+    <string name="unavailable_media_type">Unavailable media type</string>
+    <string name="loading_agent">Thinking</string>
+    <string name="dex_info_message">Dex is AI and can make mistakes.</string>
+    <string name="conversation_history_search">Search conversations</string>
+    <string name="alert_delete_title">Delete conversation?</string>
+    <string name="alert_delete_text">\"{NAME}\" will be removed permanently. This cannot be undone.</string>
+    <string name="alert_delete_btn_cancel">Cancel</string>
+    <string name="alert_delete_btn_delete">Delete</string>
+</resources>

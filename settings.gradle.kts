@@ -23,5 +23,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "Dex"
-include(":app")
+include(":dex")
  
