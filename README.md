@@ -57,7 +57,7 @@ In your app module's `build.gradle.kts`:
 
 ```kotlin
 dependencies {
-    implementation("gr.indice.agents:dex:1.0.0")
+    implementation("com.github.indice-co:Indice.Agents.Android:1.0.0")
 }
 ```
 
@@ -70,7 +70,7 @@ Replace `1.0.0` with the latest release tag shown in the badge above.
 dex = "1.0.0"
  
 [libraries]
-dex = { group = "gr.indice.agents", name = "dex", version.ref = "dex" }
+dex = { group = "com.github.indice-co", name = "Indice.Agents.Android", version.ref = "dex" }
 ```
 
 ```kotlin
