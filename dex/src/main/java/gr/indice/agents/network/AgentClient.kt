@@ -3,7 +3,7 @@ package gr.indice.agents.network
 import gr.indice.agents.network.models.TokenStorage
 import gr.indice.agents.network.services.Service
 import gr.indice.agents.network.services.ServiceInit
-import java.util.concurrent.TimeUnit
+import okhttp3.OkHttpClient
 
 
 object AgentClient {
@@ -15,14 +15,11 @@ object AgentClient {
 
     internal val tokenStorage: TokenStorage = TokenStorage.Ephemeral()
 
-    fun init(baseUrl: String) {
+    fun init(baseUrl: String, okHttpBuilderBlock: OkHttpClient.Builder.() -> OkHttpClient.Builder = { this }) {
+
         ApiClient.initialize(
             baseUrl = baseUrl,
-            okHttpBuilderBlock = {
-                connectTimeout(60, TimeUnit.SECONDS)
-                readTimeout(0, TimeUnit.MINUTES)
-                writeTimeout(60, TimeUnit.SECONDS)
-            }
+            okHttpBuilderBlock = okHttpBuilderBlock
         )
     }
 

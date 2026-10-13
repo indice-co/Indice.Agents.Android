@@ -245,9 +245,9 @@ internal class SseServiceImpl(
                 _myChatHistory.value = it.items.orEmpty()
             }
 
-        if (result == null) throw Exception("Fetch data failed")
+        //if (result == null) throw Exception("Fetch data failed")
 
-        return result
+        return result ?: ResultSet()
     }
 
     override suspend fun getChatById(chatId: String) {

@@ -6,6 +6,10 @@ plugins {
 
 android {
     namespace = "gr.indice.agents.dex"
+
+    group = "gr.indice.agents.dex"
+    version = "1.0.0"
+
     compileSdk {
         version = release(37)
     }

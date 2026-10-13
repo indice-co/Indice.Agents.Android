@@ -20,7 +20,7 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 import retrofit2.http.Streaming
 
-interface SseApi {
+internal interface SseApi {
     @Streaming
     @POST("api/my/chats/stream")
     suspend fun newStream(

@@ -12,7 +12,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.decodeFromJsonElement
 
-class PatchApplier {
+internal class PatchApplier {
     private val json = Json { ignoreUnknownKeys = true }
     private var document: JsonElement = JsonObject(emptyMap())
     private var previousPath: String? = null

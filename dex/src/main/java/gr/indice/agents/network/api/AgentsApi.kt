@@ -7,7 +7,7 @@ import retrofit2.Retrofit
 import retrofit2.create
 import retrofit2.http.GET
 
-interface AgentsApi {
+internal interface AgentsApi {
 
     @GET("api/agents")
     suspend fun getAgents(): Response<List<AgentInfo>>
