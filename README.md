@@ -14,6 +14,71 @@ This project is an Android client for the Indice agent service. It contains two 
 1. The service communication with Indice agent API
 2. The UI representation of the Indice agent responses
 
+## Requirements
+
+- Android `minSdk` 26+
+- Java 11+ (`compileOptions` source/target compatibility)
+- Jetpack Compose enabled in the consuming app
+
+### 1. Add the JitPack repository
+
+In your project's `settings.gradle.kts`:
+
+```kotlin
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        maven("https://jitpack.io")
+    }
+}
+```
+
+<details>
+<summary>Groovy (<code>settings.gradle</code>)</summary>
+```groovy
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://jitpack.io' }
+    }
+}
+```
+
+</details>
+> Using an older project layout? Add the same `maven("https://jitpack.io")` line to the
+> `allprojects { repositories { ... } }` block in your root `build.gradle(.kts)` instead.
+
+### 2. Add the dependency
+
+In your app module's `build.gradle.kts`:
+
+```kotlin
+dependencies {
+    implementation("gr.indice.agents:dex:1.0.0")
+}
+```
+
+Replace `1.0.0` with the latest release tag shown in the badge above.
+
+#### Using a version catalog (`libs.versions.toml`)
+
+```toml
+[versions]
+dex = "1.0.0"
+ 
+[libraries]
+dex = { group = "gr.indice.agents", name = "dex", version.ref = "dex" }
+```
+
+```kotlin
+dependencies {
+    implementation(libs.dex)
+}
+```
+
 ## How to implement
 
 Call `AgentClient.init` as early as possible, e.g. in `Application.onCreate()`.
