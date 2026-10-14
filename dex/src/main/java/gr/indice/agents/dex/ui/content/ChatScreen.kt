@@ -1,7 +1,6 @@
 package gr.indice.agents.dex.ui.content
 
 import androidx.compose.animation.animateContentSize
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -45,6 +44,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -59,7 +59,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.fromHtml
@@ -81,6 +80,10 @@ import gr.indice.agents.dex.ui.elements.MultipleChoicesView
 import gr.indice.agents.dex.ui.elements.UnavailableTypeView
 import gr.indice.agents.dex.ui.theme.default
 import gr.indice.agents.dex.ui.theme.small
+import gr.indice.agents.dex.utilities.AgentUiConfig
+import gr.indice.agents.dex.utilities.LocalColors
+import gr.indice.agents.dex.utilities.UiImage
+import gr.indice.agents.dex.utilities.UiImageView
 import gr.indice.agents.network.models.AgentInfo
 import gr.indice.agents.network.models.DexChatUsage
 import kotlinx.coroutines.delay
@@ -103,7 +106,7 @@ object ChatScreen {
     @Composable
     fun View(
         modifier: Modifier = Modifier,
-        chatName: String,
+        config: AgentUiConfig,
         chatList: List<ChatItem>,
         questionLimit: DexChatUsage?,
         uiState: UiState,
@@ -112,10 +115,14 @@ object ChatScreen {
         actions: Actions
     ) {
         val scope = rememberCoroutineScope()
+        val colors = LocalColors.current
+
         Scaffold(
             modifier = modifier
                 .fillMaxSize()
                 .imePadding(),
+            containerColor = colors.background,
+            contentColor = colors.contentColor,
             topBar = {
                 TopAppBar(
                     title = {
@@ -124,13 +131,12 @@ object ChatScreen {
                             horizontalArrangement = Arrangement.spacedBy(default),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Image(
+                            UiImageView(
                                 modifier = Modifier.size(40.dp),
-                                painter = painterResource(R.drawable.dex_logo_default),
-                                contentDescription = "DEX Logo",
+                                uiImage = config.icon
                             )
                             Text(
-                                text = chatName,
+                                text = config.name,
                                 style = MaterialTheme.typography.headlineMedium
                             )
                         }
@@ -139,7 +145,14 @@ object ChatScreen {
                         IconButton(onClick = { scope.launch { actions.openMenu() } }) {
                             Icon(Icons.Default.Menu, contentDescription = "Menu")
                         }
-                    }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = colors.background,
+                        navigationIconContentColor = colors.contentColor,
+                        titleContentColor = colors.contentColor,
+                        subtitleContentColor = colors.contentColor,
+                        actionIconContentColor = colors.contentColor
+                    )
                 )
             }
         ) { innerPadding ->
@@ -195,7 +208,7 @@ object ChatScreen {
                             Column {
                                 Surface(
                                     shape = item.shape,
-                                    color = if (item.isUser) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+                                    color = if (item.isUser) colors.primary else colors.secondary
                                 ) {
                                     when(item) {
                                         is ChatItem.UserItem -> {
@@ -214,6 +227,7 @@ object ChatScreen {
                                                     .padding(small)
                                                     .animateContentSize(),
                                                 content = item.chatContent,
+                                                logo = config.icon,
                                                 isActive = lastAgentMessageId == currentMessageId,
                                                 onReply = actions.onSubmit
                                             )
@@ -270,6 +284,7 @@ object ChatScreen {
         modifier: Modifier = Modifier,
         content: List<ChatContent>,
         isActive: Boolean,
+        logo: UiImage,
         onReply: (String) -> Unit
     ) {
         Column(
@@ -316,10 +331,10 @@ object ChatScreen {
                         ConfirmationView.View(data = item.content.data, isActive = isActive) { onReply(it) }
                     }
                     is ChatContentType.Unsupported -> {
-                        UnavailableTypeView.View(mediaType = item.content.mediaType)
+                        UnavailableTypeView.View(logo = logo, mediaType = item.content.mediaType)
                     }
                     is ChatContentType.Unavailable -> {
-                        UnavailableTypeView.View(mediaType = item.content.mediaType)
+                        UnavailableTypeView.View(logo = logo, mediaType = item.content.mediaType)
                     }
                 }
             }
@@ -329,7 +344,7 @@ object ChatScreen {
     private fun LazyListScope.statusView(isLoading: Boolean, status: String) {
         if (isLoading || status.isNotEmpty()) {
             item {
-
+                val colors = LocalColors.current
                 var dotCount by remember { mutableIntStateOf(1) }
 
                 LaunchedEffect(isLoading, status) {
@@ -345,13 +360,13 @@ object ChatScreen {
                 Text(
                     modifier = Modifier
                         .clip(RoundedCornerShape(default))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f), RoundedCornerShape(default))
+                        .background(colors.secondary.copy(alpha = 0.8f), RoundedCornerShape(default))
                         .padding(small)
                         .animateContentSize()
                     ,
                     text = text,
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                    color = colors.primary.copy(alpha = 0.8f)
                 )
             }
 
@@ -362,10 +377,11 @@ object ChatScreen {
     private fun LazyListScope.errorView(value: String) {
         value.takeIf { it.isNotEmpty() }?.let {
             item {
+                val colors = LocalColors.current
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(color = Color.Red, shape = RoundedCornerShape(default))
+                        .background(color = colors.error, shape = RoundedCornerShape(default))
                         .padding(default),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(default)
@@ -399,6 +415,7 @@ object ChatScreen {
         onAgentSelection: (AgentInfo) -> Unit
     ) {
         val input = rememberTextFieldState()
+        val colors = LocalColors.current
 
         Row(
             modifier = modifier
@@ -412,8 +429,8 @@ object ChatScreen {
             BasicTextField(
                 modifier = Modifier.weight(1f),
                 state = input,
-                textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onBackground),
-                cursorBrush = SolidColor( MaterialTheme.colorScheme.onBackground),
+                textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.contentColor),
+                cursorBrush = SolidColor( colors.contentColor),
                 interactionSource = interaction,
                 inputTransformation = InputTransformation.maxLength(maxLength),
                 lineLimits = TextFieldLineLimits.MultiLine(maxHeightInLines = totalLineHeight),
@@ -422,11 +439,7 @@ object ChatScreen {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .border(
-                                2.dp,
-                                OutlinedTextFieldDefaults.colors().focusedIndicatorColor,
-                                OutlinedTextFieldDefaults.shape
-                            )
+                            .border(2.dp, colors.primary, OutlinedTextFieldDefaults.shape)
                             .padding(small)
                             .heightIn(min = OutlinedTextFieldDefaults.MinHeight)
                             .animateContentSize()
@@ -449,7 +462,7 @@ object ChatScreen {
                                     Text(
                                         text = placeholderText,
                                         style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f)
+                                        color = colors.contentColor.copy(alpha = 0.8f)
                                     )
                                 }
                             }
@@ -492,7 +505,7 @@ object ChatScreen {
                             modifier = Modifier
                                 .clip(CircleShape)
                                 .size(40.dp)
-                                .background(color = MaterialTheme.colorScheme.primary, CircleShape)
+                                .background(color = colors.primary, CircleShape)
                                 .clickable(enabled = (!isConnected && input.text.isNotEmpty()) || isConnected) {
                                     if (isConnected) {
                                         stopStream()

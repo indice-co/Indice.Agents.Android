@@ -12,7 +12,6 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Circle
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -29,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import gr.indice.agents.dex.R
 import gr.indice.agents.dex.ui.theme.default
 import gr.indice.agents.dex.ui.theme.small
+import gr.indice.agents.dex.utilities.LocalColors
 
 object MultipleChoicesView {
 
@@ -40,6 +40,7 @@ object MultipleChoicesView {
         onSubmit: (String) -> Unit
     ) {
         var selected by remember { mutableStateOf<String?>(null) }
+        val colors = LocalColors.current
 
         Column(
             modifier = modifier,
@@ -48,7 +49,7 @@ object MultipleChoicesView {
             Surface(
                 shape = RoundedCornerShape(default),
                 color = Color.Transparent,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(
+                border = BorderStroke(1.dp, colors.contentColor.copy(
                     alpha = if (isActive) 1f else 0.5f
                 ))
             ) {

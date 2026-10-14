@@ -28,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -54,6 +55,7 @@ import androidx.paging.compose.LazyPagingItems
 import gr.indice.agents.dex.R
 import gr.indice.agents.dex.ui.theme.default
 import gr.indice.agents.dex.ui.theme.small
+import gr.indice.agents.dex.utilities.LocalColors
 import gr.indice.agents.dex.utilities.pagerList
 import gr.indice.agents.dex.utilities.toFormattedString
 import gr.indice.agents.network.models.ConversationListItem
@@ -92,11 +94,13 @@ object DrawerSheet {
         }
 
         val scope = rememberCoroutineScope()
+        val colors = LocalColors.current
+
         ModalDrawerSheet(
             modifier = modifier
                 .fillMaxHeight()
             ,
-            drawerContainerColor = MaterialTheme.colorScheme.background
+            drawerContainerColor = colors.background
         ) {
             Text(
                 text = title,
@@ -115,6 +119,20 @@ object DrawerSheet {
                 state = search,
                 lineLimits = TextFieldLineLimits.SingleLine,
                 shape = CircleShape,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = colors.primary,
+                    unfocusedBorderColor = colors.primary,
+                    disabledBorderColor = colors.primary.copy(alpha = 0.5f),
+                    focusedContainerColor = colors.background,
+                    unfocusedContainerColor = colors.background,
+                    disabledContainerColor = colors.background.copy(alpha = 0.5f),
+                    focusedTextColor = colors.contentColor,
+                    unfocusedTextColor = colors.contentColor,
+                    disabledTextColor = colors.contentColor.copy(alpha = 0.5f),
+                    focusedPlaceholderColor = colors.contentColor.copy(alpha = 0.4f),
+                    unfocusedPlaceholderColor = colors.contentColor.copy(alpha = 0.4f),
+                    disabledPlaceholderColor = colors.contentColor.copy(alpha = 0.4f)
+                ),
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Outlined.Search,
@@ -199,9 +217,12 @@ object DrawerSheet {
                                             Text(stringResource(R.string.alert_delete_text)
                                                 .replace("{NAME}", item.title.orEmpty()))
                                         },
-                                        shape= RoundedCornerShape(default),
+                                        shape = RoundedCornerShape(default),
                                         tonalElevation =  0.dp,
-                                        iconContentColor = MaterialTheme.colorScheme.primary,
+                                        iconContentColor = colors.primary,
+                                        textContentColor = colors.contentColor,
+                                        containerColor = colors.background,
+                                        titleContentColor = colors.contentColor,
                                         properties = DialogProperties(
                                             dismissOnBackPress = false,
                                             dismissOnClickOutside = false,
@@ -218,7 +239,7 @@ object DrawerSheet {
                                         Box(
                                             Modifier
                                                 .fillMaxSize()
-                                                .background(color = MaterialTheme.colorScheme.errorContainer)
+                                                .background(color = colors.error)
                                             ,
                                             contentAlignment = Alignment.CenterEnd
                                         ) {
@@ -249,7 +270,7 @@ object DrawerSheet {
                                     Column(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .background(MaterialTheme.colorScheme.background)
+                                            .background(colors.background)
                                             .clickable {
                                                 actions.fetchChat(item.id)
                                             }
@@ -276,6 +297,8 @@ object DrawerSheet {
                 FloatingActionButton(
                     modifier = Modifier
                         .align(Alignment.BottomEnd),
+                    containerColor = colors.primary,
+                    contentColor = colors.background,
                     onClick = {
                         actions.newChat()
                     }

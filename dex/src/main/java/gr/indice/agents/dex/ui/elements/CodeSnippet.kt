@@ -20,11 +20,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.toClipEntry
 import androidx.compose.ui.text.font.FontFamily
 import gr.indice.agents.dex.ui.theme.default
 import gr.indice.agents.dex.ui.theme.small
+import gr.indice.agents.dex.utilities.LocalColors
 import kotlinx.coroutines.launch
 
 object CodeSnippet {
@@ -34,10 +36,12 @@ object CodeSnippet {
         modifier: Modifier = Modifier,
         code: String
     ) {
+        val colors = LocalColors.current
+
         Box(modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(small))
-            .background(MaterialTheme.colorScheme.secondaryContainer)
+            .background(colors.secondary.copy(alpha = 0.6f).compositeOver(colors.contentColor))
         ) {
             val clipboard = LocalClipboard.current
             val scope = rememberCoroutineScope()
@@ -45,7 +49,7 @@ object CodeSnippet {
             SelectionContainer {
                 Text(
                     text = code,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    color = colors.contentColor,
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontFamily = FontFamily.Monospace
                     ),

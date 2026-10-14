@@ -4,6 +4,7 @@ import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -14,22 +15,27 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.collectAsLazyPagingItems
 import gr.indice.agents.dex.ui.content.ChatScreen
 import gr.indice.agents.dex.ui.menu.DrawerSheet
-import gr.indice.agents.dex.ui.theme.DexTheme
+import gr.indice.agents.dex.utilities.AgentUiConfig
+import gr.indice.agents.dex.utilities.AgentUiDefault
+import gr.indice.agents.dex.utilities.LocalColors
 import gr.indice.agents.network.AgentClient
 import kotlinx.coroutines.launch
 
 object AgentUiScreen {
 
     @Composable
-    fun View() {
-        DexTheme {
-            Content()
+    fun View(
+        config: AgentUiConfig = AgentUiDefault.default()
+    ) {
+        CompositionLocalProvider(LocalColors provides config.colors) {
+            Content(config = config)
         }
     }
 
     @Composable
     internal fun Content(
-        viewModel: AgentUiViewModel = viewModel()
+        viewModel: AgentUiViewModel = viewModel(),
+        config: AgentUiConfig
     ) {
         val drawerState = rememberDrawerState(DrawerValue.Closed)
         val scope = rememberCoroutineScope()
@@ -66,7 +72,7 @@ object AgentUiScreen {
             val agents by viewModel.agents.collectAsStateWithLifecycle()
 
             ChatScreen.View(
-                chatName = "Dex",
+                config = config,
                 chatList = chatList,
                 questionLimit = questionLimit,
                 uiState = uiState,

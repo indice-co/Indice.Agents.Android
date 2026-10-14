@@ -10,15 +10,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.viewinterop.AndroidView
+import gr.indice.agents.dex.utilities.LocalColors
 
 
 @Composable
 fun ChatHtmlView(html: String, modifier: Modifier = Modifier) {
     val isDark = isSystemInDarkTheme()
     val uriHandler = LocalUriHandler.current
-    val document = remember(html, isDark) { htmlDocument(html, isDark) }
+    val colors = LocalColors.current
+    val document = remember(html, isDark) { htmlDocument(html, textColor = colors.contentColor, linkColor = colors.primary) }
 
     AndroidView(
         modifier = modifier
@@ -57,10 +60,13 @@ fun ChatHtmlView(html: String, modifier: Modifier = Modifier) {
     )
 }
 
-private fun htmlDocument(html: String, isDark: Boolean): String {
-    val scheme = if (isDark) "dark" else "light"
-    val textColor = if (isDark) "#f5f5f5" else "#202124"
-    val linkColor = if (isDark) "#80b5ff" else "#1263c5"
+private fun htmlDocument(html: String, textColor: androidx.compose.ui.graphics.Color, linkColor: androidx.compose.ui.graphics.Color): String {
+    val scheme = "light"
+    fun androidx.compose.ui.graphics.Color.toHex(): String {
+        return String.format("#%06X", this.toArgb() and 0xFFFFFF)
+    }
+//    val textColor = if (isDark) "#f5f5f5" else "#202124"
+//    val linkColor = if (isDark) "#80b5ff" else "#1263c5"
     return """
         <!doctype html><html><head>
         <meta charset="utf-8">
@@ -69,14 +75,14 @@ private fun htmlDocument(html: String, isDark: Boolean): String {
         <style>
         :root { color-scheme: $scheme; }
         html, body { margin: 0; padding: 0; background: transparent; }
-        body { font: 17px sans-serif; color: $textColor; line-height: 1.5; overflow-wrap: anywhere; }
+        body { font: 17px sans-serif; color: ${textColor.toHex()}; line-height: 1.5; overflow-wrap: anywhere; }
         #indice-content { display: flow-root; padding: 2px; }
         * { box-sizing: border-box; }
         img, svg { max-width: 100%; height: auto; }
         p { margin: .35em 0; }
         h1, h2, h3, h4 { margin: .6em 0 .2em; line-height: 1.2; }
         h1 { font-size: 1.5em; } h2 { font-size: 1.3em; } h3 { font-size: 1.1em; }
-        a { color: $linkColor; }
+        a { color: ${linkColor.toHex()}; }
         pre { white-space: pre-wrap; } table { border-collapse: collapse; max-width: 100%; }
         th, td { padding: .3em; border: 1px solid #8886; }
         figure { margin: 0; }
