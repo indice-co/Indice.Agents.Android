@@ -89,4 +89,6 @@ dependencies {
     implementation(libs.bundles.retrofit)
     implementation(libs.okhttp.logging)
     implementation(libs.bundles.moshi)
+
+    implementation(libs.common.mark)
 }

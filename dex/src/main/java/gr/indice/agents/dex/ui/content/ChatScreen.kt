@@ -85,6 +85,8 @@ import gr.indice.agents.network.models.AgentInfo
 import gr.indice.agents.network.models.DexChatUsage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.commonmark.parser.Parser
+import org.commonmark.renderer.html.HtmlRenderer
 import kotlin.time.Duration.Companion.milliseconds
 
 object ChatScreen {
@@ -286,7 +288,12 @@ object ChatScreen {
                                     CodeSnippet.View(code = data.code)
                                 }
                                 is ChatContentType.Markdown.Block.Text -> {
-                                    Text(text = AnnotatedString.fromHtml(data.text))
+                                    val parser = Parser.builder().build()
+                                    val document = parser.parse(data.text)
+                                    val htmlRender =  HtmlRenderer.builder().build()
+                                    val htmlText = htmlRender.render(document)
+
+                                    Text(text = AnnotatedString.fromHtml(htmlText))
                                 }
                             }
 
