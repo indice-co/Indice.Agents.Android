@@ -9,7 +9,7 @@ android {
     namespace = "gr.indice.agents.dex"
 
     group = "gr.indice.agents"
-    version = "1.0.0"
+    version = "1.0.1"
 
     publishing {
         singleVariant("release") {
@@ -67,11 +67,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
-    testImplementation(libs.junit)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
-    androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(libs.androidx.junit)
+
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
     implementation(libs.androidx.compose.material.icons.extended)
@@ -89,4 +85,6 @@ dependencies {
     implementation(libs.bundles.retrofit)
     implementation(libs.okhttp.logging)
     implementation(libs.bundles.moshi)
+
+    implementation(libs.common.mark)
 }

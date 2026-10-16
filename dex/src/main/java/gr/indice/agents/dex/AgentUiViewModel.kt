@@ -15,6 +15,7 @@ import gr.indice.agents.network.models.AgentInfo
 import gr.indice.agents.network.models.ChatData
 import gr.indice.agents.network.models.ConversationListItem
 import gr.indice.agents.network.models.DexChatUsage
+import gr.indice.agents.network.models.StreamData
 import gr.indice.agents.network.services.AgentsService
 import gr.indice.agents.network.services.SseService
 import kotlinx.coroutines.Dispatchers
@@ -44,7 +45,6 @@ internal class AgentUiViewModel(
 
     private val _sessionQuestionsLimit = MutableStateFlow<DexChatUsage?>(null)
     val sessionQuestionsLimit = _sessionQuestionsLimit.asStateFlow()
-    val errorMessage get () = sseService.errorText
 
     val agents get() = agentsService.agents
 
@@ -85,6 +85,9 @@ internal class AgentUiViewModel(
         }
     val chatList = sseService.chatData
         .map {
+            if (it.isEmpty()) {
+                _sessionQuestionsLimit.value = null
+            }
             it.map { chatData ->
                 when(chatData) {
                     is ChatData.AgentResponse -> {
@@ -112,12 +115,24 @@ internal class AgentUiViewModel(
 
     init {
         viewModelScope.launch {
-            sseService.statusText.collect { status ->
-                _uiState.update { it.copy(statusText = status, isLoading = false) }
+            sseService.streamState.collectLatest { state ->
+                println(state.toString())
+                when(state) {
+                    is StreamData.Status -> _uiState.value = UiState(statusText = state.value, isConnected = true)
+                    is StreamData.Error -> _uiState.value = UiState(errorMessage = state.message, isConnected = false)
+                    is StreamData.Completed -> _uiState.value = UiState(isCompleted = true, isConnected = false)
+                    is StreamData.Started -> _uiState.value = UiState(isConnected = true, isLoading = true)
+                    StreamData.Changed -> _uiState.value = UiState(isConnected = true, isLoading = true)
+                    StreamData.Ignored, null -> _uiState.value = UiState()
+                }
             }
         }
+
+
         viewModelScope.launch {
+            _uiState.update { it.copy(initialling = true) }
             agentsService.getAgents()
+            _uiState.update { it.copy(initialling = false) }
         }
 
         viewModelScope.launch {
@@ -165,9 +180,6 @@ internal class AgentUiViewModel(
     fun newChat() {
         sseService.newInstance()
         _sessionQuestionsLimit.value = null
-        _uiState.update {
-            it.copy(statusText = "", isLoading = false)
-        }
     }
 
     fun selectedAgent(agent: AgentInfo) {
@@ -188,6 +200,6 @@ internal class AgentUiViewModel(
     fun stop() {
         job?.cancel()
         job = null
-        _uiState.update { it.copy(isConnected = false, isLoading = false, statusText = "") }
+        _uiState.value = UiState(isConnected = false, isLoading = false, statusText = "")
     }
 }

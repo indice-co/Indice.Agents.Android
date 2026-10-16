@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,9 +54,10 @@ fun <T: Any> LazyListScope.pagerList(
 
             if (addHeader) {
                 stickyHeader {
+                    val colors = LocalColors.current
                     Box(
                         modifier = Modifier
-                            .background(MaterialTheme.colorScheme.background).padding(vertical = default),
+                            .background(colors.background).padding(vertical = default),
                         contentAlignment = Alignment.Center
                     ) {
                         headerContent(currentItem)
@@ -76,7 +76,7 @@ fun <T: Any> LazyListScope.pagerList(
             items.loadState.append is LoadState.Loading   -> {
                 item {
                     Column {
-                        CircularProgressIndicator()
+                        CircularProgressIndicator(color = LocalColors.current.primary)
                         Spacer(Modifier.height(16.dp))
                     }
                 }
