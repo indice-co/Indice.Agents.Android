@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import gr.indice.agents.dex.ui.theme.default
 import gr.indice.agents.dex.ui.theme.small
+import gr.indice.agents.dex.utilities.LocalColors
 import gr.indice.agents.dex.utilities.iconVector
 import gr.indice.agents.network.models.AgentInfo
 
@@ -49,6 +50,8 @@ object DropdownSelection {
         var expanded by remember { mutableStateOf(false) }
         var selectedOption by remember(options) { mutableStateOf(options.firstOrNull()) }
 
+        val colors = LocalColors.current
+
         ExposedDropdownMenuBox(
             expanded = expanded,
             onExpandedChange = { expanded = it },
@@ -57,7 +60,7 @@ object DropdownSelection {
             Row(
                 modifier = Modifier
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                    .background(colors.secondary, CircleShape)
                     .padding(small)
                     .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
                     .fillMaxWidth()
@@ -88,7 +91,7 @@ object DropdownSelection {
                     .width(IntrinsicSize.Max),
                 expanded = expanded,
                 shadowElevation = 2.dp,
-                containerColor = MaterialTheme.colorScheme.background,
+                containerColor = colors.background,
                 onDismissRequest = { expanded = false }
             ) {
                 options.forEach { option ->
@@ -100,7 +103,7 @@ object DropdownSelection {
                                 expanded = false
                                 onSelection(option)
                             }
-                            .background(color = if (selectedOption == option) MaterialTheme.colorScheme.surfaceVariant else Color.Unspecified, RoundedCornerShape(default))
+                            .background(color = if (selectedOption == option) colors.secondary else Color.Unspecified, RoundedCornerShape(default))
                             .padding(default)
                         ,
                         horizontalArrangement = Arrangement.spacedBy(small)
@@ -130,20 +133,10 @@ object DropdownSelection {
                                 modifier = Modifier.size(default),
                                 imageVector = Icons.Default.Check,
                                 contentDescription = "Selected",
-                                tint = MaterialTheme.colorScheme.primary
+                                tint = colors.primary
                             )
                         }
                     }
-
-//                    DropdownMenuItem(
-//                        modifier = Modifier   .width(IntrinsicSize.Max),
-//                        text = { Text(option.name) },
-//                        onClick = {
-//                            selectedOption = option
-//                            expanded = false
-//                            onSelection(option)
-//                        }
-//                    )
                 }
             }
         }

@@ -8,7 +8,7 @@ data class DexConversation(
     val lastActivityAt: OffsetDateTime,
     val messageCount: Int,
     val messages: List<DexChatMessage>,
-    val readOnly: Boolean,
+    val readOnly: Boolean?,
     val title: String?,
     val usage: DexChatUsage
 )

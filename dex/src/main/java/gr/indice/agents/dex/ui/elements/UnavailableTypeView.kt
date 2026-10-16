@@ -1,6 +1,5 @@
 package gr.indice.agents.dex.ui.elements
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -12,33 +11,32 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import gr.indice.agents.dex.R
 import gr.indice.agents.dex.ui.theme.default
 import gr.indice.agents.dex.ui.theme.small
+import gr.indice.agents.dex.utilities.LocalColors
+import gr.indice.agents.dex.utilities.UiImage
+import gr.indice.agents.dex.utilities.UiImageView
 
 object UnavailableTypeView {
 
     @Composable
     fun View(
         modifier: Modifier = Modifier,
+        logo: UiImage,
         mediaType: String?
     ) {
+        val colors = LocalColors.current
         Row(
             modifier = modifier
-                .background(color = Color.Red, shape = CircleShape)
+                .background(color = colors.error, shape = CircleShape)
                 .padding(default),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(small)
         ) {
-            Image(
-                painter = painterResource(R.drawable.dex_logo_default),
-                contentDescription = "DEX Logo",
-                modifier = Modifier.size(24.dp)
-            )
+            UiImageView(modifier = Modifier.size(24.dp), uiImage = logo)
 
             Text(
                 text = stringResource(R.string.unavailable_media_type) + " ${mediaType ?: "-"}",

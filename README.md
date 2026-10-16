@@ -121,6 +121,25 @@ class MyApp : Application() {
 ## Showing the UI
 
 After the client is initialized, display the chat screen by calling `AgentUiScreen.View()` from the package `gr.indice.agents.dex`.
+Agent can configure via data class AgentUiConfig 
+
+# AgentUiConfig
+Signature
+
+```kotlin
+data class AgentUiConfig(
+    val name: String,
+    val icon: UiImage,
+    val colors: AgentColors
+)
+```
+
+| Parameter         | Description                                                                                |
+|-------------------|--------------------------------------------------------------------------------------------|
+| `name`            | The name of the Agent                                                                      |
+| `icon`            | Select from Resources, ImageVectors or URL for Agent icon                                  |
+| `colors`          | You can pass primary, secondary, error, background, contentColor to customise the Agent UI |
+
 
 ```kotlin
 import gr.indice.agents.dex.AgentUiScreen
@@ -134,7 +153,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
-                AgentUiScreen.View()
+                AgentUiScreen.View(
+                    config = AgentUiConfig(
+                        name = "Dex",
+                        icon = UiImage.Resource(painterResource(R.drawable.dex_logo_default)),
+                        colors = defaultColors()
+                    )
+                )
             }
         }
     }
@@ -146,7 +171,15 @@ Or inside your own navigation graph:
 ```kotlin
 NavHost(navController, startDestination = "home") {
     composable("home") { HomeScreen() }
-    composable("agent") { AgentUiScreen.View() }
+    composable("agent") { 
+        AgentUiScreen.View(
+            config = AgentUiConfig(
+                name = "Dex",
+                icon = UiImage.Resource(painterResource(R.drawable.dex_logo_default)),
+                colors = defaultColors()
+            )
+        ) 
+    }
 }
 ```
 

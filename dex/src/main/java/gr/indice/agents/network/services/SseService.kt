@@ -30,6 +30,8 @@ interface SseService {
     val errorText: StateFlow<String>
     val chatData: StateFlow<List<ChatData>>
 
+    val streamState: StateFlow<StreamData?>
+
     val myChatHistory: StateFlow<List<ConversationListItem>>
 
     suspend fun sendMessage(request: String, agentInfo: AgentInfo?)
@@ -60,6 +62,7 @@ internal class SseServiceImpl(
     private var conversationId: String? = null
 
     private var _streamState = MutableStateFlow<StreamData?>(null)
+    override val streamState = _streamState.asStateFlow()
     private var hasTerminated: Boolean = false
     private var isCompleted: Boolean = false
 
@@ -73,7 +76,6 @@ internal class SseServiceImpl(
 
     override suspend fun sendMessage(request: String, agentInfo: AgentInfo?) {
         withContext(Dispatchers.IO) {
-            _errorText.value = ""
 
             _responses.update {
                 it + ChatData.UserRequest(request)
@@ -134,7 +136,7 @@ internal class SseServiceImpl(
                                                         chatGuestSession = guestSession
                                                         AgentClient.tokenStorage.parse(guestSession)
                                                     }
-                                                    _streamState.value = conversationId?.let { uuid ->
+                                                    _streamState.value = obj.conversationId?.let { uuid ->
                                                         StreamData.Started(uuid)
                                                     }
                                                 }
@@ -143,8 +145,7 @@ internal class SseServiceImpl(
                                             "error" -> {
                                                 val errorText = it.optString("reason")
                                                 hasTerminated = true
-                                                _statusText.value = ""
-                                                _errorText.value = errorText
+                                                _streamState.value = StreamData.Error(errorText)
                                                 throw Exception(errorText)
                                             }
 
@@ -154,12 +155,10 @@ internal class SseServiceImpl(
                                                 when (type) {
                                                     "status" -> {
                                                         val value = it.optString("value")
-                                                        _statusText.value = value
                                                         _streamState.value = StreamData.Status(value)
                                                     }
 
                                                     "delta" -> {
-                                                        _statusText.value = ""
                                                         _streamState.value = StreamData.Changed
                                                         patchApplier.apply(patchApplier.parsePatch(data))
 
@@ -224,7 +223,7 @@ internal class SseServiceImpl(
                     chatGuestSession = null
                 }
             } else {
-                _errorText.value = responseApi.errorBody()?.toProblemDetails()?.description.orEmpty()
+                _streamState.value = StreamData.Error( responseApi.errorBody()?.toProblemDetails()?.description.orEmpty())
             }
 
             getMyChats()
@@ -245,8 +244,6 @@ internal class SseServiceImpl(
                 _myChatHistory.value = it.items.orEmpty()
             }
 
-        //if (result == null) throw Exception("Fetch data failed")
-
         return result ?: ResultSet()
     }
 
@@ -255,8 +252,6 @@ internal class SseServiceImpl(
         val chasList = api.getChatById(authorization = AgentClient.tokenStorage.authorization, chatId = chatId).body()
 
         conversationId = chatId
-        _statusText.value = ""
-        _errorText.value = ""
 
         chasList?.let { list ->
             _responses.value = emptyList()
@@ -325,8 +320,7 @@ internal class SseServiceImpl(
     }
 
     override fun newInstance() {
-        _statusText.value = ""
-        _errorText.value = ""
+        _streamState.value = null
         _responses.value = emptyList()
         conversationId = null
     }

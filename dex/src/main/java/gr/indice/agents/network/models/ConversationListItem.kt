@@ -7,7 +7,7 @@ data class ConversationListItem(
     val id: String,
     val lastActivityAt: OffsetDateTime,
     val pin: Boolean,
-    val readOnly: Boolean,
+    val readOnly: Boolean?,
     val title: String?,
     val totalCompletionTokens: Int,
     val totalPromptTokens: Int

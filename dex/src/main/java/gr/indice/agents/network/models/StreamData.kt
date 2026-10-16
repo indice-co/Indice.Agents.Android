@@ -5,5 +5,6 @@ sealed interface StreamData {
     data class Status(val value: String): StreamData
     data object Changed: StreamData
     data object Ignored: StreamData
+    data class Error(val message: String): StreamData
     data class Completed(val response: DexChatResponse): StreamData
 }

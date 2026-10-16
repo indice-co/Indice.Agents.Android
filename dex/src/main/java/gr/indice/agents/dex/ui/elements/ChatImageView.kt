@@ -20,6 +20,7 @@ import coil3.request.crossfade
 import gr.indice.agents.dex.R
 import gr.indice.agents.dex.models.ChatContentType
 import gr.indice.agents.dex.utilities.ChatImageLoader
+import gr.indice.agents.dex.utilities.LocalColors
 
 object ChatImageView {
 
@@ -64,7 +65,7 @@ object ChatImageView {
                 Text(
                     text = caption,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = LocalColors.current.contentColor,
                 )
             }
         }

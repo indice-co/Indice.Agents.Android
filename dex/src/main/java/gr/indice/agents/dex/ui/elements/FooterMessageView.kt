@@ -42,17 +42,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import gr.indice.agents.dex.R
 import gr.indice.agents.dex.models.domain
 import gr.indice.agents.dex.models.faviconUrl
 import gr.indice.agents.dex.ui.theme.default
 import gr.indice.agents.dex.ui.theme.small
 import gr.indice.agents.dex.utilities.ChatImageLoader
+import gr.indice.agents.dex.utilities.LocalColors
 import gr.indice.agents.network.models.Citation
 import gr.indice.agents.network.models.DexChatMessage
 
@@ -96,7 +99,7 @@ internal object FooterMessageView {
                 Icon(
                     imageVector = Icons.Default.Language,
                     contentDescription = citation.domain,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = LocalColors.current.contentColor,
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -186,6 +189,7 @@ internal object FooterMessageView {
 
         val visibleCitations = uniqueByDomain.take(maxIconsPreview)
         val extra = uniqueByDomain.size - visibleCitations.size
+        val colors = LocalColors.current
 
         Column(
             modifier = modifier
@@ -193,7 +197,7 @@ internal object FooterMessageView {
             Surface(
                 shape = CircleShape,
                 onClick = onExpand ,
-                color = MaterialTheme.colorScheme.surfaceContainerHigh
+                color = colors.secondary
             ) {
                 Row(
                     modifier = Modifier
@@ -213,25 +217,23 @@ internal object FooterMessageView {
                                     modifier = Modifier
                                         .size(24.dp)
                                         .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.secondaryContainer)
-                                        .border(
-                                            2.dp,
-                                            MaterialTheme.colorScheme.surface,
-                                            CircleShape
-                                        ),
+                                        .background(colors.secondary)
+                                        .border(2.dp, colors.primary, CircleShape)
+                                    ,
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
                                         text = "+$extra",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                                        color = colors.contentColor
                                     )
                                 }
                             }
                             Text(
-                                text = "${citations.count()} sources",
+                                text = stringResource(R.string.sources)
+                                    .replace("{COUNT}", citations.count().toString()),
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                                color = colors.contentColor
                             )
                         }
 
@@ -256,6 +258,7 @@ internal object FooterMessageView {
     ) {
         if (citations.isEmpty()) return
         val uriHandler = LocalUriHandler.current
+        val colors = LocalColors.current
 
         Column(
             modifier = modifier,
@@ -270,7 +273,7 @@ internal object FooterMessageView {
                                 uriHandler.openUri(it)
                             }
                         }
-                        .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
+                        .background(colors.secondary, CircleShape)
                         .width(IntrinsicSize.Max)
                         .padding(small),
                     verticalAlignment = Alignment.CenterVertically,
@@ -278,7 +281,7 @@ internal object FooterMessageView {
                 ) {
                     Text(
                         text = "${citation.number}.",
-                        style = MaterialTheme.typography.labelMedium.copy(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        style = MaterialTheme.typography.labelMedium.copy(color = colors.primary, fontWeight = FontWeight.Bold)
                     )
                     FaviconIcon(citation = citation)
                     Text(
