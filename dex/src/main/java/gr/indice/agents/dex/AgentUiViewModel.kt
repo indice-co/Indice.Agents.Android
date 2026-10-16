@@ -85,6 +85,9 @@ internal class AgentUiViewModel(
         }
     val chatList = sseService.chatData
         .map {
+            if (it.isEmpty()) {
+                _sessionQuestionsLimit.value = null
+            }
             it.map { chatData ->
                 when(chatData) {
                     is ChatData.AgentResponse -> {
