@@ -112,7 +112,6 @@ object AgentUiScreen {
             } else {
                 val chatList by viewModel.chatList.collectAsStateWithLifecycle()
                 val questionLimit by viewModel.sessionQuestionsLimit.collectAsStateWithLifecycle()
-                val errorText by viewModel.errorMessage.collectAsStateWithLifecycle()
                 val agents by viewModel.agents.collectAsStateWithLifecycle()
 
                 ChatScreen.View(
@@ -120,7 +119,6 @@ object AgentUiScreen {
                     chatList = chatList,
                     questionLimit = questionLimit,
                     uiState = uiState,
-                    errorText = errorText,
                     agents = agents,
                     actions = ChatScreen.Actions(
                         openMenu = {

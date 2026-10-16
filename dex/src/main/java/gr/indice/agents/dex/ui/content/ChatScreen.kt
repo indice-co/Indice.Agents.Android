@@ -38,6 +38,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -61,6 +62,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.unit.dp
 import gr.indice.agents.dex.R
@@ -110,7 +112,6 @@ object ChatScreen {
         chatList: List<ChatItem>,
         questionLimit: DexChatUsage?,
         uiState: UiState,
-        errorText: String,
         agents: List<AgentInfo>,
         actions: Actions
     ) {
@@ -167,18 +168,15 @@ object ChatScreen {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
 
-                LaunchedEffect(chatList.count(), uiState.statusText, errorText) {
-                    val lastVisible = state.layoutInfo.visibleItemsInfo.lastOrNull()?.index
-                    var lastIndex = chatList.lastIndex
-                    uiState.statusText.takeIf { it.isNotEmpty() }?.let {
-                        lastIndex++
+                LaunchedEffect(uiState, chatList) {
+                    if (uiState.isCompleted) {
+                        state.animateScrollToItem(chatList.count())
                     }
-                    errorText.takeIf { it.isNotEmpty() }?.let {
-                        lastIndex++
+                    else if (chatList.lastOrNull() is ChatItem.UserItem) {
+                        state.animateScrollToItem(chatList.count())
                     }
-
-                    if (lastVisible == null || lastVisible >= lastIndex - 1) {
-                        state.animateScrollToItem(lastIndex.coerceAtLeast(0))
+                    else if (uiState.statusText.isNotEmpty()) {
+                        state.animateScrollToItem(chatList.count() + 1)
                     }
                 }
 
@@ -253,8 +251,8 @@ object ChatScreen {
                         }
                     }
 
-                    statusView(uiState.isLoading, uiState.statusText)
-                    errorView(errorText)
+                    statusView(uiState.isLoading && chatList.filterIsInstance<ChatItem.AgentItem>().isEmpty(), uiState.statusText)
+                    errorView(uiState.errorMessage ?: "")
 
                 }
 
@@ -270,7 +268,8 @@ object ChatScreen {
 
                 CompositionLocalProvider(LocalContentColor provides LocalContentColor.current.copy(alpha = 0.5f)) {
                     Text(
-                        text = stringResource(R.string.dex_info_message),
+                        text = stringResource(R.string.agent_info_message)
+                            .replace("{NAME}", config.name),
                         style = MaterialTheme.typography.labelSmall
                     )
                 }
@@ -308,7 +307,12 @@ object ChatScreen {
                                     val htmlRender =  HtmlRenderer.builder().build()
                                     val htmlText = htmlRender.render(document)
 
-                                    Text(text = AnnotatedString.fromHtml(htmlText))
+                                    Text(text = AnnotatedString.fromHtml(
+                                        htmlString = htmlText,
+                                        linkStyles = TextLinkStyles(
+                                            style = LocalTextStyle.current.toSpanStyle().copy(color = LocalColors.current.primary)
+                                        )
+                                    ))
                                 }
                             }
 

@@ -34,6 +34,7 @@ import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
@@ -153,7 +154,16 @@ object DrawerSheet {
                 ,
                 isRefreshing = isRefreshing,
                 onRefresh = onRefreshAction,
-                state = refreshState
+                state = refreshState,
+                indicator = {
+                    Indicator(
+                        modifier = Modifier.align(Alignment.TopCenter),
+                        isRefreshing = isRefreshing,
+                        state = refreshState,
+                        color = colors.primary,
+                        containerColor = colors.secondary
+                    )
+                }
             ) {
                 Column(
                     modifier = Modifier
@@ -240,7 +250,10 @@ object DrawerSheet {
 
                                 SwipeToDismissBox(
                                     state = dismissState,
-                                    modifier = Modifier.clip(RoundedCornerShape(default)),
+                                    modifier = Modifier
+                                        .padding(bottom = small)
+                                        .clip(RoundedCornerShape(default))
+                                    ,
                                     enableDismissFromStartToEnd = false,
                                     backgroundContent = {
                                         Box(

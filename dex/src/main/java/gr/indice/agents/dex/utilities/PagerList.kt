@@ -76,7 +76,7 @@ fun <T: Any> LazyListScope.pagerList(
             items.loadState.append is LoadState.Loading   -> {
                 item {
                     Column {
-                        CircularProgressIndicator()
+                        CircularProgressIndicator(color = LocalColors.current.primary)
                         Spacer(Modifier.height(16.dp))
                     }
                 }
