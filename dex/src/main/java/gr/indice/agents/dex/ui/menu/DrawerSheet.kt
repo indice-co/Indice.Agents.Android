@@ -20,6 +20,7 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -189,6 +190,12 @@ object DrawerSheet {
                                         onDismissRequest = {},
                                         confirmButton = {
                                             Button(
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = colors.primary,
+                                                    contentColor = colors.background,
+                                                    disabledContainerColor = colors.primary.copy(alpha = 0.1f),
+                                                    disabledContentColor = colors.contentColor.copy(alpha = 0.1f)
+                                                ),
                                                 onClick = {
                                                     showAlert = false
                                                     actions.deleteChat(item.id)
@@ -239,7 +246,7 @@ object DrawerSheet {
                                         Box(
                                             Modifier
                                                 .fillMaxSize()
-                                                .background(color = colors.error)
+                                                .background(color = colors.error, shape = RoundedCornerShape(default))
                                             ,
                                             contentAlignment = Alignment.CenterEnd
                                         ) {
@@ -249,7 +256,11 @@ object DrawerSheet {
                                                     //actions.deleteChat(item.id)
                                                 }
                                             ) {
-                                                Icon(imageVector = Icons.Outlined.Delete, "Delete")
+                                                Icon(
+                                                    imageVector = Icons.Outlined.Delete,
+                                                    contentDescription = "Delete",
+                                                    tint = colors.background
+                                                )
                                             }
                                         }
 
@@ -270,7 +281,7 @@ object DrawerSheet {
                                     Column(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .background(colors.background)
+                                            .background(colors.background, shape = RoundedCornerShape(default))
                                             .clickable {
                                                 actions.fetchChat(item.id)
                                             }

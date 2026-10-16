@@ -111,13 +111,16 @@ internal class AgentUiViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), emptyList())
 
     init {
+
         viewModelScope.launch {
             sseService.statusText.collect { status ->
                 _uiState.update { it.copy(statusText = status, isLoading = false) }
             }
         }
         viewModelScope.launch {
+            _uiState.update { it.copy(initialling = true) }
             agentsService.getAgents()
+            _uiState.update { it.copy(initialling = false) }
         }
 
         viewModelScope.launch {

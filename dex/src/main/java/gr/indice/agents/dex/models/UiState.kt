@@ -5,5 +5,6 @@ data class UiState(
     val events: String = "",
     val isConnected: Boolean = false,
     val statusText: String = "",
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val initialling: Boolean = false
 )

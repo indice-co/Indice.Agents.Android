@@ -217,7 +217,7 @@ object ChatScreen {
                                                     .padding(small)
                                                     .animateContentSize(),
                                                 text = AnnotatedString.fromHtml(item.value),
-                                                color = Color.White
+                                                color = colors.background
                                             )
                                         }
                                         is ChatItem.AgentItem -> {
@@ -521,7 +521,7 @@ object ChatScreen {
                                 modifier = Modifier.size(20.dp),
                                 imageVector = icon,
                                 contentDescription = "",
-                                tint = Color.White
+                                tint = colors.background
                             )
                         }
                     }

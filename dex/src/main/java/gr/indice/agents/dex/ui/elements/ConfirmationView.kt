@@ -57,7 +57,7 @@ object ConfirmationView {
                     enabled = isActive,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = colors.primary,
-                        contentColor = colors.contentColor,
+                        contentColor = colors.background,
                         disabledContainerColor = colors.primary.copy(alpha = 0.1f),
                         disabledContentColor = colors.contentColor.copy(alpha = 0.1f)
                     ),
