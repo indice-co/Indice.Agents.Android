@@ -4,6 +4,9 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -54,7 +58,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -86,8 +93,11 @@ import gr.indice.agents.dex.utilities.AgentUiConfig
 import gr.indice.agents.dex.utilities.LocalColors
 import gr.indice.agents.dex.utilities.UiImage
 import gr.indice.agents.dex.utilities.UiImageView
+import gr.indice.agents.dex.utilities.rememberRevealedText
 import gr.indice.agents.network.models.AgentInfo
+import gr.indice.agents.network.models.ChatPhase
 import gr.indice.agents.network.models.DexChatUsage
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.commonmark.parser.Parser
@@ -95,6 +105,9 @@ import org.commonmark.renderer.html.HtmlRenderer
 import kotlin.time.Duration.Companion.milliseconds
 
 object ChatScreen {
+
+    private val markdownParser = Parser.builder().build()
+    private val htmlRenderer = HtmlRenderer.builder().build()
 
     data class Actions(
         val openMenu: () -> Unit,
@@ -109,14 +122,13 @@ object ChatScreen {
     fun View(
         modifier: Modifier = Modifier,
         config: AgentUiConfig,
-        chatList: List<ChatItem>,
-        questionLimit: DexChatUsage?,
-        uiState: UiState,
-        agents: List<AgentInfo>,
+        state: UiState,
         actions: Actions
     ) {
         val scope = rememberCoroutineScope()
         val colors = LocalColors.current
+        val chatList = state.chat
+        val phase = state.phase
 
         Scaffold(
             modifier = modifier
@@ -158,7 +170,12 @@ object ChatScreen {
             }
         ) { innerPadding ->
 
-            val state = rememberLazyListState()
+            val listState = rememberLazyListState()
+
+            val statusText = (phase as? ChatPhase.Streaming)?.status.orEmpty()
+            val showStatus = phase is ChatPhase.Loading ||
+                    (phase is ChatPhase.Streaming && (statusText.isNotEmpty() || chatList.lastOrNull() is ChatItem.UserItem))
+            val errorText = (phase as? ChatPhase.Error)?.message.orEmpty()
 
             Column(
                 modifier = Modifier
@@ -168,15 +185,19 @@ object ChatScreen {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
 
-                LaunchedEffect(uiState, chatList) {
-                    if (uiState.isCompleted) {
-                        state.animateScrollToItem(chatList.count())
-                    }
-                    else if (chatList.lastOrNull() is ChatItem.UserItem) {
-                        state.animateScrollToItem(chatList.count())
-                    }
-                    else if (uiState.statusText.isNotEmpty()) {
-                        state.animateScrollToItem(chatList.count() + 1)
+                val lastItem = chatList.lastOrNull()
+                val streamingId = (lastItem as? ChatItem.AgentItem)?.id?.takeIf { phase is ChatPhase.Streaming }
+                val isStreaming by rememberUpdatedState(streamingId != null)
+
+                LaunchedEffect(lastItem?.id) {
+                    when (lastItem) {
+                        is ChatItem.UserItem -> followList(listState, pinIndex = null)
+                        is ChatItem.AgentItem -> if (isStreaming) {
+                            followList(listState, pinIndex = chatList.lastIndex)
+                        } else {
+                            listState.scrollToItem(chatList.lastIndex)
+                        }
+                        null -> Unit
                     }
                 }
 
@@ -195,7 +216,7 @@ object ChatScreen {
                         .weight(1f)
                     ,
                     verticalArrangement = Arrangement.spacedBy(default),
-                    state = state
+                    state = listState
                 ) {
                     items(chatList, key = { it.id }) { item ->
                         Row(
@@ -220,11 +241,13 @@ object ChatScreen {
                                         }
                                         is ChatItem.AgentItem -> {
                                             val currentMessageId = item.response.messages.lastOrNull()?.messageId
+                                            val animate = rememberSaveable(item.id) { item.id == streamingId }
                                             AgentResponseContent(
                                                 modifier = Modifier
                                                     .padding(small)
                                                     .animateContentSize(),
                                                 content = item.chatContent,
+                                                animate = animate,
                                                 logo = config.icon,
                                                 isActive = lastAgentMessageId == currentMessageId,
                                                 onReply = actions.onSubmit
@@ -251,16 +274,17 @@ object ChatScreen {
                         }
                     }
 
-                    statusView(uiState.isLoading && chatList.filterIsInstance<ChatItem.AgentItem>().isEmpty(), uiState.statusText)
-                    errorView(uiState.errorMessage ?: "")
+                    statusView(showStatus, statusText)
+                    errorView(errorText)
 
                 }
 
                 InputView(
-                    isConnected = uiState.isConnected,
+                    isConnected = state.isBusy,
                     placeholderText = stringResource(R.string.input_placeholder),
-                    questionLimit = questionLimit,
-                    agents = agents,
+                    questionLimit = state.usage,
+                    agents = state.agents,
+                    selectedAgent = state.selectedAgent,
                     onSubmit = actions.onSubmit,
                     stopStream = actions.stopStream,
                     onAgentSelection = actions.onAgentSelection
@@ -282,6 +306,7 @@ object ChatScreen {
     private fun AgentResponseContent(
         modifier: Modifier = Modifier,
         content: List<ChatContent>,
+        animate: Boolean,
         isActive: Boolean,
         logo: UiImage,
         onReply: (String) -> Unit
@@ -293,26 +318,16 @@ object ChatScreen {
             content.forEach { item ->
                 when(item.content) {
                     is ChatContentType.Text -> {
-                        Text(text = item.content.value)
+                        Text(text = rememberRevealedText(item.content.value, animate))
                     }
                     is ChatContentType.Markdown -> {
                         item.content.value.forEach { data ->
                             when(data) {
                                 is ChatContentType.Markdown.Block.Code -> {
-                                    CodeSnippet.View(code = data.code)
+                                    CodeSnippet.View(code = rememberRevealedText(data.code, animate))
                                 }
                                 is ChatContentType.Markdown.Block.Text -> {
-                                    val parser = Parser.builder().build()
-                                    val document = parser.parse(data.text)
-                                    val htmlRender =  HtmlRenderer.builder().build()
-                                    val htmlText = htmlRender.render(document)
-
-                                    Text(text = AnnotatedString.fromHtml(
-                                        htmlString = htmlText,
-                                        linkStyles = TextLinkStyles(
-                                            style = LocalTextStyle.current.toSpanStyle().copy(color = LocalColors.current.primary)
-                                        )
-                                    ))
+                                    MarkdownText(text = data.text, animate = animate)
                                 }
                             }
 
@@ -343,6 +358,61 @@ object ChatScreen {
                 }
             }
         }
+    }
+
+
+    private suspend fun followList(listState: LazyListState, pinIndex: Int?) = coroutineScope {
+        var following = true
+        launch {
+            listState.interactionSource.interactions.collect {
+                if (it is DragInteraction.Start) following = false
+            }
+        }
+
+        snapshotFlow {
+            val info = listState.layoutInfo
+            val visible = info.visibleItemsInfo
+            val last = visible.lastOrNull() ?: return@snapshotFlow 0
+
+            val toEnd = if (last.index == info.totalItemsCount - 1) {
+                last.offset + last.size - info.viewportSize.height
+            } else {
+                FAR
+            }
+            val toPin = when {
+                pinIndex == null -> FAR
+                else -> visible.firstOrNull { it.index == pinIndex }?.offset
+                    ?: if (pinIndex > last.index) FAR else 0
+            }
+            minOf(toEnd, toPin)
+        }.collect { delta ->
+            when {
+                !following || delta <= 0 -> Unit
+                delta == FAR -> listState.animateScrollToItem(pinIndex ?: (listState.layoutInfo.totalItemsCount - 1))
+                delta > SMOOTH_SCROLL_THRESHOLD -> listState.animateScrollBy(delta.toFloat())
+                else -> listState.scrollBy(delta.toFloat())
+            }
+        }
+    }
+
+    private const val FAR = Int.MAX_VALUE
+    private const val SMOOTH_SCROLL_THRESHOLD = 120
+
+    @Composable
+    private fun MarkdownText(text: String, animate: Boolean) {
+        val revealed = rememberRevealedText(text, animate)
+        val linkColor = LocalColors.current.primary
+        val textStyle = LocalTextStyle.current
+
+        val annotated = remember(revealed, linkColor, textStyle) {
+            AnnotatedString.fromHtml(
+                htmlString = htmlRenderer.render(markdownParser.parse(revealed)),
+                linkStyles = TextLinkStyles(
+                    style = textStyle.toSpanStyle().copy(color = linkColor)
+                )
+            )
+        }
+        Text(text = annotated)
     }
 
     private fun LazyListScope.statusView(isLoading: Boolean, status: String) {
@@ -414,6 +484,7 @@ object ChatScreen {
         maxLength: Int = 2000,
         totalLineHeight: Int = 10,
         agents: List<AgentInfo>,
+        selectedAgent: AgentInfo?,
         onSubmit: (String) -> Unit,
         stopStream: () -> Unit,
         onAgentSelection: (AgentInfo) -> Unit
@@ -486,6 +557,7 @@ object ChatScreen {
 
                                     DropdownSelection.View(
                                         options = agents,
+                                        selected = selectedAgent,
                                         onSelection = onAgentSelection
                                     )
 

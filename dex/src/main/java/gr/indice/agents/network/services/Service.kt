@@ -1,5 +1,8 @@
 package gr.indice.agents.network.services
 
+import gr.indice.agents.dex.BuildConfig
+import kotlinx.coroutines.CancellationException
+
 
 internal interface Service {
     val sseService: SseService
@@ -16,3 +19,12 @@ internal class ServiceImpl: Service {
 
 }
 
+internal suspend fun <T> safeCall(block: suspend () -> T): T? =
+    try {
+        block()
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        if (BuildConfig.DEBUG) e.printStackTrace()
+        null
+    }

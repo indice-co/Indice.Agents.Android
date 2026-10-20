@@ -38,6 +38,8 @@ internal object ApiClient {
             else -> OkHttpClientBuilderHelper.getOkHttpBuilder()
         }.let(OKHTTP_BUILDER_BLOCK)
             .apply {
+                addInterceptor(GuestAuthInterceptor(AgentClient.tokenStorage))
+
                 connectTimeout(60, TimeUnit.SECONDS)
                 readTimeout(0, TimeUnit.MINUTES)
                 writeTimeout(60, TimeUnit.SECONDS)

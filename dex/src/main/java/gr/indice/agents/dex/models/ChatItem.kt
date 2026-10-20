@@ -4,14 +4,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
 import gr.indice.agents.dex.ui.theme.default
 import gr.indice.agents.network.models.DexChatResponse
-import java.util.UUID
 
 
 sealed interface ChatItem {
     val value: String
-    val id: UUID
-    data class UserItem(override val value: String, override val id: UUID = UUID.randomUUID()): ChatItem
-    data class AgentItem(override val value: String, val response: DexChatResponse, val chatContent: List<ChatContent>, override val id: UUID = UUID.randomUUID()): ChatItem
+    val id: String
+    data class UserItem(override val value: String, override val id: String): ChatItem
+    data class AgentItem(override val value: String, val response: DexChatResponse, val chatContent: List<ChatContent>, override val id: String): ChatItem
 }
 
 val ChatItem.isUser: Boolean get() = this is ChatItem.UserItem

@@ -21,7 +21,7 @@ internal class AgentsServiceImpl(
     override val agents = _agents.asStateFlow()
 
     override suspend fun getAgents() {
-        api.getAgents().takeIf { it.isSuccessful }?.let {
+        safeCall { api.getAgents() }?.takeIf { it.isSuccessful }?.let {
             _agents.value = it.body().orEmpty()
         }
     }
