@@ -18,8 +18,8 @@ internal class PatchApplier {
     private var previousPath: String? = null
     private var previousOperation: String? = null
 
-    fun parseStartData(line: String): DexChatResponse = json.decodeFromString(line)
-    fun parsePatch(line: String): Patch = json.decodeFromString<Patch>(line)
+    fun parseStartData(frame: JsonObject): DexChatResponse = json.decodeFromJsonElement(frame)
+    fun parsePatch(frame: JsonObject): Patch = json.decodeFromJsonElement(frame)
 
     fun apply(patch: Patch) {
         val (path, operationName) = resolveTarget(patch, previousPath, previousOperation)

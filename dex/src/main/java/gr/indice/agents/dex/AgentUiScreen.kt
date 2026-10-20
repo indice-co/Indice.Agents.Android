@@ -13,7 +13,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -51,11 +50,7 @@ object AgentUiScreen {
     ) {
         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-        val isReady by remember(uiState) {
-            derivedStateOf {
-                !uiState.initialling
-            }
-        }
+        val isReady = !uiState.isInitializing
 
         val drawerState = rememberDrawerState(DrawerValue.Closed) { isReady }
         val scope = rememberCoroutineScope()
@@ -110,16 +105,9 @@ object AgentUiScreen {
                     }
                 }
             } else {
-                val chatList by viewModel.chatList.collectAsStateWithLifecycle()
-                val questionLimit by viewModel.sessionQuestionsLimit.collectAsStateWithLifecycle()
-                val agents by viewModel.agents.collectAsStateWithLifecycle()
-
                 ChatScreen.View(
                     config = config,
-                    chatList = chatList,
-                    questionLimit = questionLimit,
-                    uiState = uiState,
-                    agents = agents,
+                    state = uiState,
                     actions = ChatScreen.Actions(
                         openMenu = {
                             scope.launch { drawerState.open() }
