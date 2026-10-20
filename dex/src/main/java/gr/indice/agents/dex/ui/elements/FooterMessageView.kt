@@ -136,7 +136,7 @@ internal object FooterMessageView {
 
                 if (message?.messageId != null) {
 
-                    val isLiked = remember { message.liked }
+                    val isLiked = message.liked
 
                     Row(
                         modifier = Modifier.width(IntrinsicSize.Max),
