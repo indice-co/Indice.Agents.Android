@@ -45,10 +45,11 @@ object DropdownSelection {
     fun View(
         modifier: Modifier = Modifier,
         options: List<AgentInfo>,
+        selected: AgentInfo?,
         onSelection: (AgentInfo) -> Unit
     ) {
         var expanded by remember { mutableStateOf(false) }
-        var selectedOption by remember(options) { mutableStateOf(options.firstOrNull()) }
+        val selectedOption = selected
 
         val colors = LocalColors.current
 
@@ -99,7 +100,6 @@ object DropdownSelection {
                         modifier = Modifier
                             .clip(RoundedCornerShape(default))
                             .clickable {
-                                selectedOption = option
                                 expanded = false
                                 onSelection(option)
                             }

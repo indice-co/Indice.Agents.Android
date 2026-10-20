@@ -216,6 +216,7 @@ AgentClient.init(
 
 - Call `AgentClient.init` **once**, at application start.
 - `okHttpBuilderBlock` is optional; without it the module uses a default client with no authorization.
+- Without your own authorization, the module uses the guest session the agent API returns on the first message, and sends it only once one exists. If your interceptor sets an `Authorization` header, your header always wins and the guest token is never sent. The guest token is cleared when the server answers `401`.
 - Interceptors run in the order they are added.
 - Use `addInterceptor` for application-level concerns (e.g. auth headers) and `addNetworkInterceptor` only if you need to observe the actual network traffic.
 

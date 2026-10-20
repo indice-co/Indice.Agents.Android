@@ -87,6 +87,7 @@ import gr.indice.agents.dex.utilities.LocalColors
 import gr.indice.agents.dex.utilities.UiImage
 import gr.indice.agents.dex.utilities.UiImageView
 import gr.indice.agents.network.models.AgentInfo
+import gr.indice.agents.network.models.ChatPhase
 import gr.indice.agents.network.models.DexChatUsage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -109,14 +110,13 @@ object ChatScreen {
     fun View(
         modifier: Modifier = Modifier,
         config: AgentUiConfig,
-        chatList: List<ChatItem>,
-        questionLimit: DexChatUsage?,
-        uiState: UiState,
-        agents: List<AgentInfo>,
+        state: UiState,
         actions: Actions
     ) {
         val scope = rememberCoroutineScope()
         val colors = LocalColors.current
+        val chatList = state.chat
+        val phase = state.phase
 
         Scaffold(
             modifier = modifier
@@ -158,7 +158,12 @@ object ChatScreen {
             }
         ) { innerPadding ->
 
-            val state = rememberLazyListState()
+            val listState = rememberLazyListState()
+
+            val statusText = (phase as? ChatPhase.Streaming)?.status.orEmpty()
+            val showStatus = phase is ChatPhase.Loading ||
+                    (phase is ChatPhase.Streaming && (statusText.isNotEmpty() || chatList.lastOrNull() is ChatItem.UserItem))
+            val errorText = (phase as? ChatPhase.Error)?.message.orEmpty()
 
             Column(
                 modifier = Modifier
@@ -168,15 +173,12 @@ object ChatScreen {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
 
-                LaunchedEffect(uiState, chatList) {
-                    if (uiState.isCompleted) {
-                        state.animateScrollToItem(chatList.count())
-                    }
-                    else if (chatList.lastOrNull() is ChatItem.UserItem) {
-                        state.animateScrollToItem(chatList.count())
-                    }
-                    else if (uiState.statusText.isNotEmpty()) {
-                        state.animateScrollToItem(chatList.count() + 1)
+                LaunchedEffect(chatList.size, showStatus, errorText, phase is ChatPhase.Idle) {
+                    val lastIndex = chatList.size +
+                            (if (showStatus) 1 else 0) +
+                            (if (errorText.isNotEmpty()) 1 else 0) - 1
+                    if (lastIndex >= 0) {
+                        listState.animateScrollToItem(lastIndex)
                     }
                 }
 
@@ -195,7 +197,7 @@ object ChatScreen {
                         .weight(1f)
                     ,
                     verticalArrangement = Arrangement.spacedBy(default),
-                    state = state
+                    state = listState
                 ) {
                     items(chatList, key = { it.id }) { item ->
                         Row(
@@ -251,16 +253,17 @@ object ChatScreen {
                         }
                     }
 
-                    statusView(uiState.isLoading && chatList.filterIsInstance<ChatItem.AgentItem>().isEmpty(), uiState.statusText)
-                    errorView(uiState.errorMessage ?: "")
+                    statusView(showStatus, statusText)
+                    errorView(errorText)
 
                 }
 
                 InputView(
-                    isConnected = uiState.isConnected,
+                    isConnected = state.isBusy,
                     placeholderText = stringResource(R.string.input_placeholder),
-                    questionLimit = questionLimit,
-                    agents = agents,
+                    questionLimit = state.usage,
+                    agents = state.agents,
+                    selectedAgent = state.selectedAgent,
                     onSubmit = actions.onSubmit,
                     stopStream = actions.stopStream,
                     onAgentSelection = actions.onAgentSelection
@@ -414,6 +417,7 @@ object ChatScreen {
         maxLength: Int = 2000,
         totalLineHeight: Int = 10,
         agents: List<AgentInfo>,
+        selectedAgent: AgentInfo?,
         onSubmit: (String) -> Unit,
         stopStream: () -> Unit,
         onAgentSelection: (AgentInfo) -> Unit
@@ -486,6 +490,7 @@ object ChatScreen {
 
                                     DropdownSelection.View(
                                         options = agents,
+                                        selected = selectedAgent,
                                         onSelection = onAgentSelection
                                     )
 

@@ -1,5 +1,6 @@
 package gr.indice.agents.network.services
 
+import gr.indice.agents.dex.BuildConfig
 import gr.indice.agents.dex.models.ResultSet
 import gr.indice.agents.dex.models.toBase
 import gr.indice.agents.network.AgentClient
@@ -8,302 +9,233 @@ import gr.indice.agents.network.adapters.PatchApplier
 import gr.indice.agents.network.api.SseApi
 import gr.indice.agents.network.models.AgentInfo
 import gr.indice.agents.network.models.ChatData
+import gr.indice.agents.network.models.ChatPhase
 import gr.indice.agents.network.models.ChatRequest
+import gr.indice.agents.network.models.ChatSessionState
 import gr.indice.agents.network.models.ConversationListItem
 import gr.indice.agents.network.models.DexChatResponse
 import gr.indice.agents.network.models.DexChatRole
-import gr.indice.agents.network.models.GuestSession
+import gr.indice.agents.network.models.DexConversation
 import gr.indice.agents.network.models.LikeRequest
-import gr.indice.agents.network.models.StreamData
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.job
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import okhttp3.ResponseBody
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicLong
 
 interface SseService {
-    val statusText: StateFlow<String>
-    val errorText: StateFlow<String>
-    val chatData: StateFlow<List<ChatData>>
-
-    val streamState: StateFlow<StreamData?>
-
-    val myChatHistory: StateFlow<List<ConversationListItem>>
+    val state: StateFlow<ChatSessionState>
 
     suspend fun sendMessage(request: String, agentInfo: AgentInfo?)
 
-    suspend fun getMyChats(page: Int? = null, size: Int? = null, sort: Int? = null, search: String? = null): ResultSet<ConversationListItem>
+    suspend fun loadConversation(chatId: String)
 
-    suspend fun getChatById(chatId: String)
-
-    suspend fun deleteChat(chatId: String)
+    suspend fun deleteConversation(chatId: String): Boolean
 
     suspend fun likeMessage(chatId: String, messageId: String, like: Boolean?)
 
-    fun newInstance()
+    suspend fun getMyChats(page: Int? = null, size: Int? = null, sort: Int? = null, search: String? = null): ResultSet<ConversationListItem>
 
+    fun reset()
 }
 
 internal class SseServiceImpl(
     private val api: SseApi = SseApi.create()
 ): SseService {
 
+    private val json = Json { ignoreUnknownKeys = true }
 
-    private val _statusText = MutableStateFlow("")
-    override val statusText = _statusText.asStateFlow()
+    private val _state = MutableStateFlow(ChatSessionState())
+    override val state = _state.asStateFlow()
 
-    private val _errorText = MutableStateFlow("")
-    override val errorText = _errorText.asStateFlow()
 
-    private var conversationId: String? = null
+    private val generation = AtomicLong(0)
 
-    private var _streamState = MutableStateFlow<StreamData?>(null)
-    override val streamState = _streamState.asStateFlow()
-    private var hasTerminated: Boolean = false
-    private var isCompleted: Boolean = false
-
-    private val _responses = MutableStateFlow<List<ChatData>>(listOf())
-    override val chatData = _responses.asStateFlow()
-
-    private val _myChatHistory = MutableStateFlow<List<ConversationListItem>>(emptyList())
-    override val myChatHistory = _myChatHistory.asStateFlow()
-
-    private var tempMessageId: String? = null
+    private class StreamContext(val session: Long, val pendingId: String) {
+        val patchApplier = PatchApplier()
+        var started = false
+    }
 
     override suspend fun sendMessage(request: String, agentInfo: AgentInfo?) {
         withContext(Dispatchers.IO) {
+            val stream = StreamContext(session = generation.get(), pendingId = UUID.randomUUID().toString())
+            val chatRequest = ChatRequest(text = request, agentName = agentInfo?.name)
 
-            _responses.update {
-                it + ChatData.UserRequest(request)
+            updateSession(stream.session) {
+                it.copy(messages = it.messages + ChatData.UserRequest(request), phase = ChatPhase.Loading)
             }
 
-            hasTerminated = false
-            isCompleted = false
+            try {
+                val response = _state.value.conversationId
+                    ?.let { api.sendMessage(chatId = it, body = chatRequest) }
+                    ?: api.newStream(body = chatRequest)
 
-            val patchApplier = PatchApplier()
-
-            val authorization = AgentClient.tokenStorage.authorization
-
-            val responseApi = conversationId?.let {
-
-                api.sendMessage(
-                    authorization = authorization,
-                    chatId = it,
-                    ChatRequest(text = request, agentName = agentInfo?.name)
-                )
-
-            } ?: api.newStream(authorization = authorization, ChatRequest(text = request, agentName = agentInfo?.name))
-
-            if (responseApi.isSuccessful) {
-                val body = responseApi.body() ?: return@withContext
-                body.source().use { source ->
-                    if (hasTerminated) {
-                        throw Exception("Received a frame after a terminal event.")
-                    }
-
-                    var id: String? = null
-                    var event: String? = null
-                    var retry: String? = null
-                    var data: String? = null
-
-                    var chatGuestSession: GuestSession? = null
-
-                    while (!source.exhausted()) {
-                        ensureActive()
-                        val line = source.readUtf8Line() ?: break
-                        when {
-                            line.startsWith("id:") -> id = line.removePrefix("id:").trim()
-                            line.startsWith("event:") -> event = line.removePrefix("event:").trim()
-                            line.startsWith("retry:") -> retry = line.removePrefix("retry:").trim()
-                            line.startsWith("data:") -> data = line.removePrefix("data:").trim()
-                            line.isEmpty() -> {
-                                if (data != null) {
-                                    try {
-                                        val it = JSONObject(data)
-                                        when (val type = it.optString("type")) {
-                                            "start" -> {
-                                                tempMessageId = UUID.randomUUID().toString()
-                                                val obj = patchApplier.parseStartData(data)
-                                                if (conversationId == null || conversationId != obj.conversationId) {
-                                                    conversationId = obj.conversationId
-
-                                                    val guestSession = obj.guestSession
-                                                    if (guestSession != null) {
-                                                        chatGuestSession = guestSession
-                                                        AgentClient.tokenStorage.parse(guestSession)
-                                                    }
-                                                    _streamState.value = obj.conversationId?.let { uuid ->
-                                                        StreamData.Started(uuid)
-                                                    }
-                                                }
-                                            }
-
-                                            "error" -> {
-                                                val errorText = it.optString("reason")
-                                                hasTerminated = true
-                                                _streamState.value = StreamData.Error(errorText)
-                                                throw Exception(errorText)
-                                            }
-
-                                            else -> {
-                                                if (conversationId == null)
-                                                    throw Exception("Received a frame before start.")
-                                                when (type) {
-                                                    "status" -> {
-                                                        val value = it.optString("value")
-                                                        _streamState.value = StreamData.Status(value)
-                                                    }
-
-                                                    "delta" -> {
-                                                        _streamState.value = StreamData.Changed
-                                                        patchApplier.apply(patchApplier.parsePatch(data))
-
-                                                        val snapshot = patchApplier.result()
-                                                        snapshot.id = tempMessageId
-
-                                                        _responses.update {
-                                                            it.toMutableList().apply {
-                                                                removeAll { it is ChatData.AgentResponse && it.response.id == tempMessageId }
-                                                            }
-                                                        }
-                                                        _responses.update {
-                                                            it + ChatData.AgentResponse(
-                                                                snapshot
-                                                            )
-                                                        }
-                                                    }
-
-                                                    "done" -> {
-                                                        val response = patchApplier.result()
-
-                                                        response.id = tempMessageId
-                                                        response.conversationId = conversationId
-                                                        response.guestSession = chatGuestSession
-                                                        response.text = response.messages
-                                                            .flatMap { it.content.parts }
-                                                            .joinToString("") { it.value }
-                                                        _streamState.value =
-                                                            StreamData.Completed(response)
-
-                                                        _responses.update {
-                                                            it.toMutableList()
-                                                                .apply { removeAll { it is ChatData.AgentResponse && it.response.id == tempMessageId } }
-                                                        }
-
-                                                        _responses.update {
-                                                            it + ChatData.AgentResponse(response)
-                                                        }
-
-                                                        hasTerminated = true
-                                                        isCompleted = true
-                                                    }
-
-                                                    else -> {
-                                                        _streamState.value = StreamData.Ignored
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    } catch (e: Exception) {
-                                        println(e.stackTraceToString())
-                                    }
-                                }
-
-                                id = null
-                                event = null
-                                retry = null
-                                data = null
-                            }
-                        }
-                    }
-                    chatGuestSession = null
+                val body = response.body()
+                if (!response.isSuccessful || body == null) {
+                    val message = response.errorBody()?.toProblemDetails()?.description ?: GENERIC_ERROR
+                    updateSession(stream.session) { it.copy(phase = ChatPhase.Error(message)) }
+                    return@withContext
                 }
-            } else {
-                _streamState.value = StreamData.Error( responseApi.errorBody()?.toProblemDetails()?.description.orEmpty())
-            }
 
-            getMyChats()
-        }
-    }
-
-    override suspend fun getMyChats(
-        page: Int?,
-        size: Int?,
-        sort: Int?,
-        search: String?
-    ): ResultSet<ConversationListItem> {
-        val result = api.getMyChats(AgentClient.tokenStorage.authorization, page, size, sort, search)
-            .takeIf { it.isSuccessful }
-            ?.body()
-            ?.toBase()
-            ?.also {
-                _myChatHistory.value = it.items.orEmpty()
-            }
-
-        return result ?: ResultSet()
-    }
-
-    override suspend fun getChatById(chatId: String) {
-
-        val chasList = api.getChatById(authorization = AgentClient.tokenStorage.authorization, chatId = chatId).body()
-
-        conversationId = chatId
-
-        chasList?.let { list ->
-            _responses.value = emptyList()
-            val chatData = list.messages.map { message ->
-                when(message.role) {
-                    DexChatRole.User -> {
-                        ChatData.UserRequest(message.content.parts.joinToString(" ") { it.value })
-                    }
-                    else -> {
-                        ChatData.AgentResponse(
-                            DexChatResponse(
-                                conversationId = list.id,
-                                usage = list.usage,
-                                messages = listOf(message)
-                            )
-                        )
-                    }
+                val closeOnCancel = coroutineContext.job.invokeOnCompletion { body.close() }
+                try {
+                    body.use { readStream(it, stream) }
+                } finally {
+                    closeOnCancel.dispose()
+                }
+            } catch (e: Exception) {
+                if (e is CancellationException || !isActive) {
+                    updateSession(stream.session) { it.withoutPending(stream.pendingId).copy(phase = ChatPhase.Idle) }
+                    ensureActive()
+                    throw e
+                }
+                if (BuildConfig.DEBUG) e.printStackTrace()
+                updateSession(stream.session) {
+                    it.withoutPending(stream.pendingId).copy(phase = ChatPhase.Error(e.message ?: GENERIC_ERROR))
                 }
             }
-            _responses.value = chatData
         }
     }
 
-    override suspend fun deleteChat(chatId: String) {
-        api.deleteChat(authorization = AgentClient.tokenStorage.authorization, chatId = chatId)
-        if (chatId == conversationId) {
-            newInstance()
+    private fun CoroutineScope.readStream(body: ResponseBody, stream: StreamContext) {
+        val source = body.source()
+        var data: String? = null
+
+        while (true) {
+            ensureActive()
+            val line = source.readUtf8Line() ?: break
+            when {
+                line.startsWith("data:") -> {
+                    val value = line.removePrefix("data:").trim()
+                    data = data?.let { "$it\n$value" } ?: value
+                }
+                line.isEmpty() -> {
+                    val frame = data
+                    data = null
+                    if (frame != null && stream.handle(frame)) return
+                }
+            }
         }
-        _myChatHistory.update {
-            it.toMutableList().apply { removeIf { it.id == chatId } }
+
+        updateSession(stream.session) {
+            it.withoutPending(stream.pendingId).copy(phase = ChatPhase.Error(STREAM_ENDED_ERROR))
         }
     }
 
-    override suspend fun likeMessage(
-        chatId: String,
-        messageId: String,
-        like: Boolean?
-    ) {
-        val response = api.likeMessage(
-            authorization = AgentClient.tokenStorage.authorization,
-            chatId = chatId,
-            messageId = messageId,
-            request = LikeRequest(like)
-        )
+    private fun StreamContext.handle(data: String): Boolean {
+        val frame = try {
+            json.parseToJsonElement(data).jsonObject
+        } catch (e: Exception) {
+            if (BuildConfig.DEBUG) e.printStackTrace()
+            return false
+        }
 
-        if (response.isSuccessful) {
+        val type = frame["type"]?.jsonPrimitive?.contentOrNull
 
-            _responses.update { items ->
-                items.map { item ->
-                    if (item is ChatData.AgentResponse &&
-                        item.response.messages.any { it.messageId == messageId }
-                    ) {
+        when {
+            type == "start" -> {
+                val start = patchApplier.parseStartData(frame)
+                start.guestSession?.let(AgentClient.tokenStorage::parse)
+                started = true
+                updateSession(session) {
+                    it.copy(conversationId = start.conversationId ?: it.conversationId, phase = ChatPhase.Streaming(null))
+                }
+            }
+
+            type == "error" -> {
+                val reason = frame["reason"]?.jsonPrimitive?.contentOrNull ?: GENERIC_ERROR
+                updateSession(session) { it.withoutPending(pendingId).copy(phase = ChatPhase.Error(reason)) }
+                return true
+            }
+
+            !started -> if (BuildConfig.DEBUG) println("Ignored '$type' frame received before start.")
+
+            type == "status" -> {
+                val status = frame["value"]?.jsonPrimitive?.contentOrNull
+                updateSession(session) { it.copy(phase = ChatPhase.Streaming(status)) }
+            }
+
+            type == "delta" -> {
+                try {
+                    patchApplier.apply(patchApplier.parsePatch(frame))
+                } catch (e: Exception) {
+                    if (BuildConfig.DEBUG) e.printStackTrace()
+                    return false
+                }
+                val snapshot = patchApplier.result()
+                updateSession(session) { state ->
+                    state.upsertAgent(pendingId, snapshot.copy(id = pendingId, conversationId = state.conversationId))
+                        .copy(usage = snapshot.usage ?: state.usage, phase = ChatPhase.Streaming(null))
+                }
+            }
+
+            type == "done" -> {
+                val response = patchApplier.result()
+                updateSession(session) { state ->
+                    val final = response.copy(
+                        id = pendingId,
+                        conversationId = state.conversationId,
+                        text = response.messages.flatMap { it.content.parts }.joinToString("") { it.value }
+                    )
+                    state.upsertAgent(pendingId, final)
+                        .copy(usage = response.usage ?: state.usage, phase = ChatPhase.Idle)
+                }
+                return true
+            }
+
+            else -> if (BuildConfig.DEBUG) println("Ignored unknown '$type' frame.")
+        }
+        return false
+    }
+
+    override suspend fun loadConversation(chatId: String) {
+        withContext(Dispatchers.IO) {
+            val session = generation.incrementAndGet()
+            _state.value = ChatSessionState(phase = ChatPhase.Loading)
+
+            val conversation = safeCall { api.getChatById(chatId = chatId) }
+                ?.takeIf { it.isSuccessful }
+                ?.body()
+
+            updateSession(session) {
+                conversation?.toSessionState()
+                    ?: ChatSessionState(phase = ChatPhase.Error(LOAD_ERROR))
+            }
+        }
+    }
+
+    override suspend fun deleteConversation(chatId: String): Boolean =
+        withContext(Dispatchers.IO) {
+            val deleted = safeCall { api.deleteChat(chatId = chatId) }?.isSuccessful == true
+            if (deleted && _state.value.conversationId == chatId) {
+                reset()
+            }
+            deleted
+        }
+
+    override suspend fun likeMessage(chatId: String, messageId: String, like: Boolean?) {
+        withContext(Dispatchers.IO) {
+            val response = safeCall {
+                api.likeMessage(chatId = chatId, messageId = messageId, request = LikeRequest(like))
+            }
+            if (response?.isSuccessful != true) return@withContext
+
+            _state.update { state ->
+                state.copy(messages = state.messages.map { item ->
+                    if (item is ChatData.AgentResponse && item.response.messages.any { it.messageId == messageId }) {
                         item.copy(
                             response = item.response.copy(
                                 messages = item.response.messages.map { msg ->
@@ -314,14 +246,74 @@ internal class SseServiceImpl(
                     } else {
                         item
                     }
-                }
+                })
             }
         }
     }
 
-    override fun newInstance() {
-        _streamState.value = null
-        _responses.value = emptyList()
-        conversationId = null
+    override suspend fun getMyChats(
+        page: Int?,
+        size: Int?,
+        sort: Int?,
+        search: String?
+    ): ResultSet<ConversationListItem> =
+        withContext(Dispatchers.IO) {
+            safeCall { api.getMyChats(page, size, sort, search) }
+                ?.takeIf { it.isSuccessful }
+                ?.body()
+                ?.toBase()
+                ?: ResultSet()
+        }
+
+    override fun reset() {
+        generation.incrementAndGet()
+        _state.value = ChatSessionState()
+    }
+
+    private inline fun updateSession(session: Long, transform: (ChatSessionState) -> ChatSessionState) {
+        _state.update { if (generation.get() == session) transform(it) else it }
+    }
+
+    private fun ChatSessionState.withoutPending(pendingId: String) =
+        copy(messages = messages.filterNot { it is ChatData.AgentResponse && it.id == pendingId })
+
+    private fun ChatSessionState.upsertAgent(pendingId: String, response: DexChatResponse): ChatSessionState {
+        val item = ChatData.AgentResponse(id = pendingId, response = response)
+        val index = messages.indexOfLast { it is ChatData.AgentResponse && it.id == pendingId }
+        val updated = if (index >= 0) {
+            messages.toMutableList().apply { set(index, item) }
+        } else {
+            messages + item
+        }
+        return copy(messages = updated)
+    }
+
+    private fun DexConversation.toSessionState() = ChatSessionState(
+        conversationId = id,
+        usage = usage,
+        messages = messages.map { message ->
+            val itemId = message.messageId ?: UUID.randomUUID().toString()
+            when (message.role) {
+                DexChatRole.User -> ChatData.UserRequest(
+                    question = message.content.parts.joinToString(" ") { it.value },
+                    id = itemId
+                )
+                else -> ChatData.AgentResponse(
+                    id = itemId,
+                    response = DexChatResponse(
+                        id = itemId,
+                        conversationId = id,
+                        usage = usage,
+                        messages = listOf(message)
+                    )
+                )
+            }
+        }
+    )
+
+    private companion object {
+        const val GENERIC_ERROR = "Something went wrong"
+        const val LOAD_ERROR = "The conversation could not be loaded"
+        const val STREAM_ENDED_ERROR = "The response ended unexpectedly"
     }
 }

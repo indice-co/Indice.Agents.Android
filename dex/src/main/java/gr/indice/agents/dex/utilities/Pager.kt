@@ -35,6 +35,10 @@ class Pager<T: Any>(private val pageSize: Int = 10,
     fun getPagerFlow() = pager.flow
 
     private fun dataPagingSource(): PagingSource<Int, T> {
+        return createPagingSource().also { pagingSource = it }
+    }
+
+    private fun createPagingSource(): PagingSource<Int, T> {
         return object : PagingSource<Int, T>() {
             override fun getRefreshKey(state: PagingState<Int, T>): Int? {
                 return null

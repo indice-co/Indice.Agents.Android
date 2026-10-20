@@ -14,24 +14,17 @@ import gr.indice.agents.network.AgentClient
 import gr.indice.agents.network.models.AgentInfo
 import gr.indice.agents.network.models.ChatData
 import gr.indice.agents.network.models.ConversationListItem
-import gr.indice.agents.network.models.DexChatUsage
-import gr.indice.agents.network.models.StreamData
 import gr.indice.agents.network.services.AgentsService
 import gr.indice.agents.network.services.SseService
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 internal class AgentUiViewModel(
@@ -40,166 +33,151 @@ internal class AgentUiViewModel(
 ): ViewModel() {
 
     private var job: Job? = null
-    private val _uiState = MutableStateFlow(UiState())
-    val uiState = _uiState.asStateFlow()
 
-    private val _sessionQuestionsLimit = MutableStateFlow<DexChatUsage?>(null)
-    val sessionQuestionsLimit = _sessionQuestionsLimit.asStateFlow()
+    private val selectedAgent = MutableStateFlow<AgentInfo?>(null)
+    private val isInitializing = MutableStateFlow(true)
 
-    val agents get() = agentsService.agents
+    /** Mapped items by ChatData id, so only changed messages are parsed again. */
+    private var chatCache: Map<String, Pair<ChatData, ChatItem>> = emptyMap()
 
-    private var selectedAgent: AgentInfo? = null
+    val uiState: StateFlow<UiState> = combine(
+        sseService.state,
+        agentsService.agents,
+        selectedAgent,
+        isInitializing
+    ) { session, agents, selected, initializing ->
+        UiState(
+            isInitializing = initializing,
+            agents = agents,
+            selectedAgent = selected?.takeIf { it in agents } ?: agents.firstOrNull(),
+            chat = mapChat(session.messages),
+            usage = session.usage,
+            phase = session.phase
+        )
+    }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UiState())
 
     val searchText = TextFieldState()
 
-    private val _conversationPager = MutableStateFlow<Pager<ConversationListItem>?>(null)
-    val conversationPager = _conversationPager.asStateFlow()
+    private val conversationPager = Pager<ConversationListItem>(hasLocalFilter = false) { page, size ->
+        sseService.getMyChats(page = page, size = size)
+    }
 
-
-    private val filterProvider: Flow<((ConversationListItem) -> Boolean)?> =
-        combine(snapshotFlow { searchText.text }, _conversationPager ) { search, pager ->
-            if (search.isNotEmpty()) {
-                pager?.hasLocalFilter = true
-                { conversationListItem ->
-                    conversationListItem.title?.contains(search.toString(), ignoreCase = true) == true
-                }
+    private val filterProvider = snapshotFlow { searchText.text.toString() }
+        .map { search ->
+            conversationPager.hasLocalFilter = search.isNotEmpty()
+            if (search.isEmpty()) {
+                null
             } else {
-                if (pager?.hasLocalFilter == true) {
-                    pager.hasLocalFilter = false
-                }
-                null as ((ConversationListItem) -> Boolean)?
+                { item: ConversationListItem -> item.title?.contains(search, ignoreCase = true) == true }
             }
         }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     val conversationPagerFlow = conversationPager
-        .filterNotNull()
-        .flatMapLatest { it.getPagerFlow() }
+        .getPagerFlow()
         .cachedIn(viewModelScope)
         .combine(filterProvider) { page, filter ->
-            if (filter == null) {
-                page
-            } else {
-                page.filter(filter)
-            }
+            if (filter == null) page else page.filter(filter)
         }
-    val chatList = sseService.chatData
-        .map {
-            if (it.isEmpty()) {
-                _sessionQuestionsLimit.value = null
-            }
-            it.map { chatData ->
-                when(chatData) {
-                    is ChatData.AgentResponse -> {
-                        ChatItem.AgentItem(
-                            value = chatData.response.messages
-                                .flatMap { it.content.parts }
-                                .joinToString(" ") { it.value },
-                            response = chatData.response,
-                            chatContent = chatData.response.messages
-                                .flatMap { ChatContentMapper.items(it.content) }
-                        ).also {
-                            chatData.response.usage?.let { usage ->
-                                _sessionQuestionsLimit.value = usage
-                            }
-                        }
-                    }
-                    is ChatData.UserRequest -> {
-                        ChatItem.UserItem(chatData.question)
-                    }
-                }
-            }.filter {
-                it.value.isNotBlank()
-            }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(), emptyList())
 
     init {
         viewModelScope.launch {
-            sseService.streamState.collectLatest { state ->
-                println(state.toString())
-                when(state) {
-                    is StreamData.Status -> _uiState.value = UiState(statusText = state.value, isConnected = true)
-                    is StreamData.Error -> _uiState.value = UiState(errorMessage = state.message, isConnected = false)
-                    is StreamData.Completed -> _uiState.value = UiState(isCompleted = true, isConnected = false)
-                    is StreamData.Started -> _uiState.value = UiState(isConnected = true, isLoading = true)
-                    StreamData.Changed -> _uiState.value = UiState(isConnected = true, isLoading = true)
-                    StreamData.Ignored, null -> _uiState.value = UiState()
-                }
-            }
-        }
-
-
-        viewModelScope.launch {
-            _uiState.update { it.copy(initialling = true) }
             agentsService.getAgents()
-            _uiState.update { it.copy(initialling = false) }
+            isInitializing.value = false
         }
-
-        viewModelScope.launch {
-            agents.collectLatest {
-                selectedAgent = it.firstOrNull()
-            }
-        }
-
-        createPager()
     }
 
-    private fun createPager() {
-        _conversationPager.value = null
+    private fun mapChat(messages: List<ChatData>): List<ChatItem> {
+        val previous = chatCache
+        val next = HashMap<String, Pair<ChatData, ChatItem>>(messages.size)
 
-        _conversationPager.value = Pager(
-            hasLocalFilter = false
-        ) { page, size ->
-            sseService.getMyChats(
-                page = page,
-                size = size
+        val items = messages.map { data ->
+            val cached = previous[data.id]
+            val item = if (cached != null && cached.first === data) cached.second else data.toChatItem(cached)
+            next[data.id] = data to item
+            item
+        }
+
+        chatCache = next
+        return items.filter { it.value.isNotBlank() }
+    }
+
+    private fun ChatData.toChatItem(previous: Pair<ChatData, ChatItem>?): ChatItem = when (this) {
+        is ChatData.UserRequest -> ChatItem.UserItem(value = question, id = id)
+        is ChatData.AgentResponse -> {
+            val messages = response.messages
+            val previousMessages = (previous?.first as? ChatData.AgentResponse)?.response?.messages.orEmpty()
+            val previousContent = (previous?.second as? ChatItem.AgentItem)?.chatContent.orEmpty()
+
+            val chatContent = if (messages.size == 1 && previousMessages.size == 1) {
+                ChatContentMapper.items(messages[0].content, previousMessages[0].content.parts, previousContent)
+            } else {
+                messages.flatMap { ChatContentMapper.items(it.content) }
+            }
+
+            ChatItem.AgentItem(
+                value = messages.flatMap { it.content.parts }.joinToString(" ") { it.value },
+                response = response,
+                chatContent = chatContent,
+                id = id
             )
         }
     }
 
+    private fun refreshHistory() {
+        conversationPager.invalidate()
+    }
+
     fun likeMessage(chatId: String, messageId: String, like: Boolean?) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             sseService.likeMessage(chatId, messageId, like)
         }
     }
 
     fun deleteChatHistory(id: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            sseService.deleteChat(id)
-            createPager()
+        viewModelScope.launch {
+            val isCurrent = sseService.state.value.conversationId == id
+            if (sseService.deleteConversation(id)) {
+                if (isCurrent) stop()
+                refreshHistory()
+            }
         }
     }
 
     fun loadFromHistory(id: String) {
-        stop()
-        viewModelScope.launch(Dispatchers.IO) {
-            sseService.getChatById(id)
+        job?.cancel()
+        job = viewModelScope.launch {
+            sseService.loadConversation(id)
         }
     }
 
     fun newChat() {
-        sseService.newInstance()
-        _sessionQuestionsLimit.value = null
+        stop()
+        sseService.reset()
     }
 
     fun selectedAgent(agent: AgentInfo) {
-        selectedAgent = agent
+        selectedAgent.value = agent
     }
 
     fun ask(question: String) {
         if (job?.isActive == true) return
 
-        job = viewModelScope.launch(Dispatchers.IO) {
-            _uiState.update { it.copy(isConnected = true, isLoading = true) }
-            sseService.sendMessage(question, selectedAgent)
-            _uiState.update { it.copy(isConnected = false, isLoading = false) }
-            createPager()
+        val agent = selectedAgent.value ?: agentsService.agents.value.firstOrNull()
+        job = viewModelScope.launch {
+            sseService.sendMessage(question, agent)
+            refreshHistory()
         }
     }
 
     fun stop() {
         job?.cancel()
         job = null
-        _uiState.value = UiState(isConnected = false, isLoading = false, statusText = "")
+    }
+
+    override fun onCleared() {
+        stop()
+        sseService.reset()
     }
 }
