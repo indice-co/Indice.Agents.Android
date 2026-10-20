@@ -1,6 +1,9 @@
 package gr.indice.agents.dex.ui.elements
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterExitState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -32,11 +35,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,6 +63,7 @@ import gr.indice.agents.dex.utilities.ChatImageLoader
 import gr.indice.agents.dex.utilities.LocalColors
 import gr.indice.agents.network.models.Citation
 import gr.indice.agents.network.models.DexChatMessage
+import kotlinx.coroutines.flow.first
 
 internal object FooterMessageView {
 
@@ -170,7 +176,17 @@ internal object FooterMessageView {
             }
 
             AnimatedVisibility(isExpanded) {
-                CitationsView(citations = citations)
+                val requester = remember { BringIntoViewRequester() }
+
+                LaunchedEffect(Unit) {
+                    snapshotFlow { transition.currentState }.first { it == EnterExitState.Visible }
+                    requester.bringIntoView()
+                }
+
+                CitationsView(
+                    modifier = Modifier.bringIntoViewRequester(requester),
+                    citations = citations
+                )
             }
 
         }
