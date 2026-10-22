@@ -1,7 +1,7 @@
 package gr.indice.agents.dex.ui.menu
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,12 +24,12 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -46,7 +46,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -56,12 +55,12 @@ import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import gr.indice.agents.dex.R
 import gr.indice.agents.dex.ui.theme.default
+import gr.indice.agents.dex.ui.theme.large
 import gr.indice.agents.dex.ui.theme.small
 import gr.indice.agents.dex.utilities.LocalColors
 import gr.indice.agents.dex.utilities.pagerList
 import gr.indice.agents.dex.utilities.toFormattedString
 import gr.indice.agents.network.models.ConversationListItem
-import kotlinx.coroutines.launch
 
 object DrawerSheet {
 
@@ -114,7 +113,8 @@ object DrawerSheet {
 
 
             OutlinedTextField(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
                     .padding(horizontal = default)
                     .padding(top = default)
                 ,
@@ -188,11 +188,22 @@ object DrawerSheet {
                                 HorizontalDivider()
                             },
                             itemContent = {  index, _ ->
-
                                 val item = myChats[index]!!
-                                val dismissState = rememberSwipeToDismissBoxState(initialValue = SwipeToDismissBoxValue.Settled)
-
+                                val dismissState = rememberSwipeToDismissBoxState()
+                                var swipeObserved by remember { mutableStateOf(false) }
                                 var showAlert by remember { mutableStateOf(false) }
+
+                                LaunchedEffect(dismissState.settledValue) {
+                                    if (dismissState.settledValue == SwipeToDismissBoxValue.EndToStart) {
+                                        if (swipeObserved) {
+                                            showAlert = true
+                                            dismissState.reset()
+                                        } else {
+                                            dismissState.snapTo(SwipeToDismissBoxValue.Settled)
+                                        }
+                                    }
+                                    swipeObserved = true
+                                }
 
                                 if (showAlert) {
                                     AlertDialog(
@@ -252,65 +263,56 @@ object DrawerSheet {
                                     state = dismissState,
                                     modifier = Modifier
                                         .padding(bottom = small)
-                                        .clip(RoundedCornerShape(default))
                                     ,
                                     enableDismissFromStartToEnd = false,
                                     backgroundContent = {
+                                        val color by animateColorAsState(
+                                            if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) colors.error
+                                            else colors.error.copy(alpha = 0.7f)
+                                        )
                                         Box(
-                                            Modifier
+                                            modifier = Modifier
                                                 .fillMaxSize()
-                                                .background(color = colors.error, shape = RoundedCornerShape(default))
+                                                .padding(horizontal = 1.dp)
+                                                .background(
+                                                    color = color,
+                                                    shape = RoundedCornerShape(default)
+                                                )
+                                                .padding(horizontal = large)
                                             ,
                                             contentAlignment = Alignment.CenterEnd
                                         ) {
-                                            IconButton(
-                                                onClick = {
-                                                    showAlert = true
-                                                    //actions.deleteChat(item.id)
-                                                }
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Outlined.Delete,
-                                                    contentDescription = "Delete",
-                                                    tint = colors.background
-                                                )
-                                            }
+                                            Icon(
+                                                imageVector = Icons.Outlined.Delete,
+                                                contentDescription = "Delete",
+                                                tint = colors.background
+                                            )
                                         }
-
-                                    },
-                                    onDismiss = {
-                                        if (it == SwipeToDismissBoxValue.EndToStart) {
-                                            scope.launch {
-                                                dismissState.reset()
-                                                showAlert = true
-                                                //actions.deleteChat(item.id)
-                                            }
-                                        } else {
-                                            scope.launch { dismissState.reset() }
-                                        }
-
                                     }
                                 ) {
-                                    Column(
+                                    Surface(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .background(colors.background, shape = RoundedCornerShape(default))
-                                            .clickable {
-                                                actions.fetchChat(item.id)
-                                            }
-                                            .padding(small)
                                         ,
-                                        verticalArrangement = Arrangement.spacedBy(small)
+                                        color = colors.background,
+                                        onClick = { actions.fetchChat(item.id) },
+                                        shape = RoundedCornerShape(default)
+
                                     ) {
-                                        Text(
-                                            text = item.title.orEmpty(),
-                                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
-                                        )
-                                        Text(
-                                            text = item.lastActivityAt.toFormattedString("dd/MM/yyyy HH:mm"),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            fontStyle = FontStyle.Italic
-                                        )
+                                        Column(
+                                            modifier = Modifier.padding(small),
+                                            verticalArrangement = Arrangement.spacedBy(small)
+                                        ) {
+                                            Text(
+                                                text = item.title.orEmpty(),
+                                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold)
+                                            )
+                                            Text(
+                                                text = item.lastActivityAt.toFormattedString("dd/MM/yyyy HH:mm"),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                fontStyle = FontStyle.Italic
+                                            )
+                                        }
                                     }
                                 }
                             }
