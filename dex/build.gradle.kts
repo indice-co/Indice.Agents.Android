@@ -9,7 +9,7 @@ android {
     namespace = "gr.indice.agents.dex"
 
     group = "gr.indice.agents"
-    version = "1.0.2"
+    version = "1.0.3"
 
     publishing {
         singleVariant("release") {

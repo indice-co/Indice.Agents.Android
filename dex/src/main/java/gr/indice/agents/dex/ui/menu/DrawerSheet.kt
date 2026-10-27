@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,6 +17,7 @@ import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.AlertDialog
@@ -24,6 +26,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.OutlinedButton
@@ -42,7 +45,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,7 +69,8 @@ object DrawerSheet {
     data class Actions(
         val deleteChat: (String) -> Unit,
         val fetchChat: (String) -> Unit,
-        val newChat: () -> Unit
+        val newChat: () -> Unit,
+        val close: () -> Unit
     )
 
     @Composable
@@ -94,7 +97,6 @@ object DrawerSheet {
             }
         }
 
-        val scope = rememberCoroutineScope()
         val colors = LocalColors.current
 
         ModalDrawerSheet(
@@ -103,11 +105,27 @@ object DrawerSheet {
             ,
             drawerContainerColor = colors.background
         ) {
-            Text(
-                text = title,
-                modifier = Modifier.padding(default),
-                style = MaterialTheme.typography.titleLarge
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(default)
+            ) {
+                Text(
+                    text = title,
+                    modifier = Modifier.padding(default).weight(1f),
+                    style = MaterialTheme.typography.titleLarge
+                )
+
+                IconButton(
+                    onClick = actions.close
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Menu,
+                        contentDescription = "Menu"
+                    )
+                }
+            }
 
             HorizontalDivider()
 
