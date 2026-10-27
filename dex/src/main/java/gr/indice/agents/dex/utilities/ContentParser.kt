@@ -41,6 +41,7 @@ object ChatContentMapper {
     private const val CALLOUT = "application/vnd.indice.callout+json"
     private const val CONFIRM = "application/vnd.indice.confirm+json"
     private const val IMAGE_ENVELOPE = "application/vnd.indice.image+json"
+    private const val FUNCTION_CALL = "application/vnd.indice.function-call.request+json"
 
     private val TEXT_TYPES = setOf("text/html", "text/plain", "text/markdown", "text")
     private val json = Json { ignoreUnknownKeys = true }

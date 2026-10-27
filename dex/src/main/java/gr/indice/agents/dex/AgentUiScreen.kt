@@ -75,6 +75,9 @@ object AgentUiScreen {
                         newChat = {
                             viewModel.newChat()
                             scope.launch { drawerState.close() }
+                        },
+                        close = {
+                            scope.launch { drawerState.close() }
                         }
                     )
                 )
